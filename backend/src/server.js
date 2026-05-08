@@ -140,7 +140,7 @@ function normalizeSnapshot(input) {
   return {
     id: input.id,
     zoneId: input.zoneId,
-    seasonId: input.seasonId || '未设置赛季',
+    seasonId: input.seasonId || input.zoneId || '未设置项目',
     recordedAt: input.recordedAt,
     sourceName: input.sourceName,
     rows: input.rows
@@ -154,7 +154,7 @@ function createSnapshot(payload) {
   return normalizeSnapshot({
     id: `${payload.zoneId}-${Date.parse(payload.recordedAt)}-${rows.length}`,
     zoneId: payload.zoneId,
-    seasonId: payload.seasonId,
+    seasonId: payload.seasonId || payload.zoneId,
     recordedAt: payload.recordedAt || extractRecordedAt(sourceName),
     sourceName,
     rows
@@ -693,23 +693,10 @@ function buildZoneDashboard(zoneId, snapshots) {
     }))
     .sort((left, right) => right.totalPower - left.totalPower);
 
-  const seasons = zoneSnapshots.reduce((result, snapshot) => {
-    const existing = result.find((item) => item.seasonId === snapshot.seasonId);
-    if (existing) {
-      existing.snapshots.push(getSnapshotMeta(snapshot));
-      return result;
-    }
-
-    result.push({
-      seasonId: snapshot.seasonId,
-      snapshots: [getSnapshotMeta(snapshot)]
-    });
-    return result;
-  }, []);
-
-  seasons.forEach((season) => {
-    season.snapshots.sort((left, right) => new Date(right.recordedAt) - new Date(left.recordedAt));
-  });
+  const seasons = [{
+    seasonId: zoneId,
+    snapshots: zoneSnapshots.map(getSnapshotMeta).sort((left, right) => new Date(right.recordedAt) - new Date(left.recordedAt))
+  }];
 
   return {
     zoneId,
@@ -769,7 +756,7 @@ function seedSampleSnapshot() {
     const csvText = fs.readFileSync(SAMPLE_DOC, 'utf8');
     baseSnapshot = createSnapshot({
       zoneId: 'zone-demo',
-      seasonId: 'season-placeholder',
+      seasonId: 'zone-demo',
       recordedAt: extractRecordedAt(sourceName),
       sourceName,
       csvText
@@ -883,7 +870,7 @@ app.post('/api/snapshots', (request, response) => {
 
   const snapshot = createSnapshot({
     zoneId,
-    seasonId: typeof request.body?.seasonId === 'string' ? request.body.seasonId.trim() : '未设置赛季',
+    seasonId: zoneId,
     recordedAt: typeof request.body?.recordedAt === 'string' && request.body.recordedAt ? request.body.recordedAt : new Date().toISOString(),
     sourceName: typeof request.body?.sourceName === 'string' ? request.body.sourceName.trim() : '手动导入',
     csvText

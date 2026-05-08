@@ -28,7 +28,7 @@
         <div>
           <p class="eyebrow">Alliance Control</p>
           <h1>同盟管理台</h1>
-          <p id="headerHint" class="header-copy">当前赛季</p>
+          <p id="headerHint" class="header-copy">当前项目</p>
         </div>
         <div class="header-actions">
           <button id="refreshButton" class="button ghost" type="button">刷新</button>
@@ -38,13 +38,13 @@
 
       <section id="noDataSection" class="content-section" hidden>
         <div class="empty-state empty-state--large card">
-          <h2>还没有赛季数据</h2>
-          <p>先导入一份 CSV 文件，系统会自动生成当前赛季视图。</p>
+          <h2>还没有项目数据</h2>
+          <p>先导入一份 CSV 文件，系统会自动生成当前项目视图。</p>
         </div>
       </section>
 
       <nav id="sectionTabs" class="tabs" hidden>
-        <button class="tab is-active" data-section="season" type="button">当前赛季</button>
+        <button class="tab is-active" data-section="season" type="button">当前项目</button>
         <button class="tab" data-section="alliances" type="button">归档结果</button>
         <button class="tab" data-section="changes" type="button">规则说明</button>
         <button class="tab" data-section="members" type="button">原始数据</button>
@@ -54,19 +54,19 @@
       <section id="seasonSection" class="content-section" hidden>
         <div class="section-head section-head--page">
           <div>
-            <h2>当前赛季</h2>
-            <p id="currentSeasonText">默认显示最新赛季</p>
+            <h2>当前项目</h2>
+            <p id="currentSeasonText">默认显示最新项目</p>
           </div>
         </div>
         <div class="season-top-grid">
           <div class="card season-panel">
             <div class="season-meta-row">
               <div>
-                <span class="metric-label">赛区</span>
+                <span class="metric-label">项目</span>
                 <select id="zoneSelect" class="field field-inline"></select>
               </div>
               <div>
-                <span class="metric-label">当前赛季</span>
+                <span class="metric-label">当前项目</span>
                 <strong id="currentSeasonBadge" class="season-badge">--</strong>
               </div>
             </div>
@@ -155,12 +155,8 @@
         <div class="import-grid">
           <form id="snapshotForm" class="card import-card form-stack">
             <label class="field-wrap">
-              <span>赛区 ID</span>
+              <span>项目 ID</span>
               <input id="snapshotZoneId" class="field" placeholder="zone-demo" />
-            </label>
-            <label class="field-wrap">
-              <span>赛季 ID</span>
-              <input id="snapshotSeasonId" class="field" placeholder="season-current" />
             </label>
             <label class="field-wrap">
               <span>统计时间</span>
@@ -178,14 +174,15 @@
               <span>CSV 内容</span>
               <textarea id="snapshotCsvText" class="field textarea" placeholder="选文件后会自动填入，也可以手动粘贴"></textarea>
             </label>
-            <button id="submitSnapshotButton" class="button primary button-block" type="submit">导入并生成赛季</button>
+            <button id="submitSnapshotButton" class="button primary button-block" type="submit">导入并加入项目</button>
           </form>
           <div class="card import-help">
             <h3>导入规则</h3>
             <ul class="help-list">
               <li>先登录，未登录不会进入主界面。</li>
               <li>如果系统里没有任何数据，会直接停留在这个导入页。</li>
-              <li>导入成功后，首页默认回到当前赛季。</li>
+              <li>同一个项目可以反复导入多次统计数据。</li>
+              <li>如果是新赛季，直接使用新的项目 ID 即可。</li>
               <li>文件名里如果带时间，后台会自动识别统计时间。</li>
             </ul>
           </div>

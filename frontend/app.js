@@ -56,7 +56,6 @@ const elements = {
   memberList: document.querySelector('#memberList'),
   snapshotForm: document.querySelector('#snapshotForm'),
   snapshotZoneId: document.querySelector('#snapshotZoneId'),
-  snapshotSeasonId: document.querySelector('#snapshotSeasonId'),
   snapshotRecordedAt: document.querySelector('#snapshotRecordedAt'),
   snapshotSourceName: document.querySelector('#snapshotSourceName'),
   snapshotFile: document.querySelector('#snapshotFile'),
@@ -183,14 +182,14 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function formatSeasonLabel(seasonId) {
-  if (typeof seasonId !== 'string') {
-    return '当前赛季';
+function formatProjectLabel(projectId) {
+  if (typeof projectId !== 'string') {
+    return '当前项目';
   }
 
-  const normalized = seasonId.trim();
+  const normalized = projectId.trim();
   if (!normalized || normalized.includes('placeholder')) {
-    return '当前赛季';
+    return '当前项目';
   }
 
   return normalized;
@@ -274,8 +273,15 @@ function getHistoryMetricLabel(metric) {
   }[metric] || '最新快照明细';
 }
 
-function getCurrentSeason() {
-  return state.dashboard?.seasons?.[0] || null;
+function getCurrentProject() {
+  if (!state.dashboard) {
+    return null;
+  }
+
+  return {
+    projectId: state.dashboard.zoneId,
+    snapshots: state.dashboard.timeline || []
+  };
 }
 
 function getFilteredMembers() {
@@ -355,23 +361,23 @@ function getHistoryRows() {
 
 function renderSummary() {
   const overview = state.dashboard?.overview;
-  const currentSeason = getCurrentSeason();
+  const currentProject = getCurrentProject();
   const archiveSummary = state.dashboard?.archive?.summary;
 
   if (!overview || !archiveSummary) {
     elements.summaryGrid.innerHTML = '';
     elements.currentSeasonBadge.textContent = '--';
-    elements.currentSeasonText.textContent = '暂无赛季数据';
+    elements.currentSeasonText.textContent = '暂无项目数据';
     elements.headerHint.textContent = '先导入文件';
     return;
   }
 
-  const seasonLabel = formatSeasonLabel(currentSeason?.seasonId);
-  elements.currentSeasonBadge.textContent = seasonLabel;
-  elements.currentSeasonText.textContent = currentSeason
-    ? `当前展示 ${seasonLabel}，共 ${currentSeason.snapshots.length} 次统计`
+  const projectLabel = formatProjectLabel(currentProject?.projectId);
+  elements.currentSeasonBadge.textContent = projectLabel;
+  elements.currentSeasonText.textContent = currentProject
+    ? `当前展示 ${projectLabel}，共 ${currentProject.snapshots.length} 次统计`
     : '当前按最新快照展示';
-  elements.headerHint.textContent = seasonLabel;
+  elements.headerHint.textContent = projectLabel;
 
   const cards = [
     ['最新统计', formatDate(overview.latestRecordedAt)],
@@ -382,7 +388,7 @@ function renderSummary() {
     ['前线占比', formatPercent(archiveSummary.totals.frontlineRatio)],
     ['本周有战功人数', archiveSummary.totals.meritActiveCount],
     ['本周无战功人数', archiveSummary.totals.noMeritCount],
-    ['当前赛季', seasonLabel]
+    ['当前项目', projectLabel]
   ];
 
   const stateRows = archiveSummary.stateStats || [];
@@ -435,7 +441,7 @@ function renderTimeline() {
   const archiveTypeStats = state.dashboard?.archive?.summary?.archiveTypeStats || [];
 
   if (!archiveTypeStats.length) {
-    elements.timelineList.innerHTML = '<article class="empty-state"><p>当前赛季暂无归档分布。</p></article>';
+    elements.timelineList.innerHTML = '<article class="empty-state"><p>当前项目暂无归档分布。</p></article>';
     return;
   }
 
@@ -477,7 +483,7 @@ function renderTimeline() {
           </tr>
         </thead>
         <tbody>
-          ${(getCurrentSeason()?.snapshots || [])
+          ${(getCurrentProject()?.snapshots || [])
             .map(
               (snapshot) => `
                 <tr>
@@ -766,6 +772,7 @@ async function refreshDashboard() {
   }
 
   setStatus('正在加载当前赛季...', 'neutral');
+  setStatus('正在加载当前项目...', 'neutral');
 
   const meta = await apiRequest('/meta');
   state.zones = meta.zones || [];
@@ -775,9 +782,8 @@ async function refreshDashboard() {
     state.hasNoData = true;
     state.activeSection = 'import';
     elements.snapshotZoneId.value = state.selectedZoneId || 'zone-demo';
-    elements.snapshotSeasonId.value = elements.snapshotSeasonId.value || 'season-current';
     elements.headerHint.textContent = '暂无数据，请先导入文件';
-    setStatus('暂无赛季数据，请先导入 CSV 文件。', 'neutral');
+    setStatus('暂无项目数据，请先导入 CSV 文件。', 'neutral');
     render();
     return;
   }
@@ -789,10 +795,9 @@ async function refreshDashboard() {
 
   state.dashboard = await apiRequest(`/dashboard?zoneId=${encodeURIComponent(state.selectedZoneId)}`);
   elements.snapshotZoneId.value = state.selectedZoneId;
-  elements.snapshotSeasonId.value = getCurrentSeason()?.seasonId || elements.snapshotSeasonId.value || 'season-current';
   state.activeSection = 'season';
   saveSession();
-  setStatus(`已加载 ${formatSeasonLabel(getCurrentSeason()?.seasonId)}。`, 'success');
+  setStatus(`已加载 ${formatProjectLabel(getCurrentProject()?.projectId)}。`, 'success');
   render();
 }
 
@@ -874,7 +879,6 @@ async function submitSnapshot(event) {
       method: 'POST',
       body: {
         zoneId: elements.snapshotZoneId.value.trim(),
-        seasonId: elements.snapshotSeasonId.value.trim() || 'season-current',
         recordedAt: elements.snapshotRecordedAt.value.trim() || new Date().toISOString(),
         sourceName: elements.snapshotSourceName.value.trim() || '手动录入',
         csvText: elements.snapshotCsvText.value
@@ -888,7 +892,7 @@ async function submitSnapshot(event) {
     elements.snapshotSourceName.value = '';
     elements.snapshotFile.value = '';
     await refreshDashboard();
-    setStatus('文件导入成功，已切到当前赛季。', 'success');
+    setStatus('文件导入成功，已加入当前项目。', 'success');
   } catch (error) {
     setStatus(error.message || '导入失败', 'error');
   } finally {
@@ -954,8 +958,6 @@ elements.sectionTabs.addEventListener('click', (event) => {
   state.activeSection = target.dataset.section;
   updateVisibility();
 });
-
-elements.snapshotSeasonId.value = 'season-current';
 
 if (state.token) {
   refreshDashboard().catch(() => {
