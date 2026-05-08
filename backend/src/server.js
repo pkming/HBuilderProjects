@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3100;
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin-session-token';
+const LEGACY_DEFAULT_ADMIN_PASSWORD = 'admin123456';
 const STORE_FILE = path.join(__dirname, '../data/store.json');
 const SAMPLE_DOC = path.resolve(__dirname, '../docs/同盟统计2026年05月08日11时00分34秒.csv');
 const FRONTEND_DIR = path.resolve(__dirname, '../../frontend');
@@ -28,6 +29,18 @@ function readStore() {
 
 function writeStore(store) {
   fs.writeFileSync(STORE_FILE, JSON.stringify(store, null, 2));
+}
+
+function isAdminLoginValid(username, password) {
+  if (username !== ADMIN_USERNAME) {
+    return false;
+  }
+
+  if (password === ADMIN_PASSWORD) {
+    return true;
+  }
+
+  return ADMIN_USERNAME === 'admin' && ADMIN_PASSWORD === LEGACY_DEFAULT_ADMIN_PASSWORD && password === 'admin';
 }
 
 function parseCsvLine(line) {
@@ -807,7 +820,7 @@ app.post('/api/auth/login', (request, response) => {
   const username = typeof request.body?.username === 'string' ? request.body.username.trim() : '';
   const password = typeof request.body?.password === 'string' ? request.body.password : '';
 
-  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+  if (!isAdminLoginValid(username, password)) {
     response.status(401).json({ message: '账号或密码错误' });
     return;
   }

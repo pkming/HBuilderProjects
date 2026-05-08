@@ -17,6 +17,9 @@
 - 账号：admin
 - 密码：admin
 
+如果你是较早一版 Docker 部署，docker/.env 里可能还是 ADMIN_PASSWORD=admin123456。
+当前版本已经兼容这两种默认密码；建议后续统一把 docker/.env 改成 admin，避免口径不一致。
+
 ## Docker 一键部署
 
 项目采用 docker 子目录管理部署文件：
