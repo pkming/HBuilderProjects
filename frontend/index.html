@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>同盟管理台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <section id="loginScreen" class="auth-screen">
+      <div class="auth-card">
+        <h1>登录</h1>
+        <label class="field-wrap">
+          <span>账号</span>
+          <input id="username" class="field" placeholder="请输入账号" value="admin" />
+        </label>
+        <label class="field-wrap">
+          <span>密码</span>
+          <input id="password" class="field" type="password" placeholder="请输入密码" value="admin" />
+        </label>
+        <button id="loginButton" class="button primary button-block" type="button">登录</button>
+        <p id="statusText" class="status neutral">未登录。</p>
+      </div>
+    </section>
+
+    <div id="appShell" class="app-shell" hidden>
+      <header class="app-header card">
+        <div>
+          <p class="eyebrow">Alliance Control</p>
+          <h1>同盟管理台</h1>
+          <p id="headerHint" class="header-copy">当前赛季</p>
+        </div>
+        <div class="header-actions">
+          <button id="refreshButton" class="button ghost" type="button">刷新</button>
+          <button id="logoutButton" class="button ghost" type="button">退出</button>
+        </div>
+      </header>
+
+      <section id="noDataSection" class="content-section" hidden>
+        <div class="empty-state empty-state--large card">
+          <h2>还没有赛季数据</h2>
+          <p>先导入一份 CSV 文件，系统会自动生成当前赛季视图。</p>
+        </div>
+      </section>
+
+      <nav id="sectionTabs" class="tabs" hidden>
+        <button class="tab is-active" data-section="season" type="button">当前赛季</button>
+        <button class="tab" data-section="alliances" type="button">归档结果</button>
+        <button class="tab" data-section="changes" type="button">规则说明</button>
+        <button class="tab" data-section="members" type="button">原始数据</button>
+        <button class="tab" data-section="import" type="button">导入</button>
+      </nav>
+
+      <section id="seasonSection" class="content-section" hidden>
+        <div class="section-head section-head--page">
+          <div>
+            <h2>当前赛季</h2>
+            <p id="currentSeasonText">默认显示最新赛季</p>
+          </div>
+        </div>
+        <div class="season-top-grid">
+          <div class="card season-panel">
+            <div class="season-meta-row">
+              <div>
+                <span class="metric-label">赛区</span>
+                <select id="zoneSelect" class="field field-inline"></select>
+              </div>
+              <div>
+                <span class="metric-label">当前赛季</span>
+                <strong id="currentSeasonBadge" class="season-badge">--</strong>
+              </div>
+            </div>
+            <div id="summaryGrid" class="summary-grid"></div>
+          </div>
+          <div class="card season-panel">
+            <div class="section-head section-head--inner">
+              <div>
+                <h3>归档分布</h3>
+                <p>按归档类型看人数、占比和代表成员</p>
+              </div>
+            </div>
+            <div id="timelineList" class="list-stack"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="alliancesSection" class="content-section" hidden>
+        <div class="section-head section-head--page">
+          <div>
+            <h2>归档结果</h2>
+            <p>按成员输出归档类型、处理建议和综合评分</p>
+          </div>
+        </div>
+        <div id="allianceGrid" class="alliance-grid"></div>
+      </section>
+
+      <section id="changesSection" class="content-section" hidden>
+        <div class="section-head section-head--page">
+          <div>
+            <h2>规则说明</h2>
+            <p>归档分组和综合评分的判定规则</p>
+          </div>
+        </div>
+        <div id="changesList" class="list-stack"></div>
+      </section>
+
+      <section id="membersSection" class="content-section" hidden>
+        <div class="section-head section-head--page">
+          <div>
+            <h2>原始数据</h2>
+            <p>保留成员基础数据，同时补上归档类型和标签</p>
+          </div>
+        </div>
+        <div class="member-toolbar card toolbar-card">
+          <label class="field-wrap compact-field">
+            <span>搜索</span>
+            <input id="keywordInput" class="field" placeholder="成员名 / 门阀 / 州 / 归档类型" />
+          </label>
+          <label class="field-wrap compact-field">
+            <span>查看指标</span>
+            <select id="memberMetricSelect" class="field">
+              <option value="latest">最新快照明细</option>
+              <option value="contributionWeek">贡献本周</option>
+              <option value="meritWeek">战功本周</option>
+              <option value="assistWeek">助攻本周</option>
+              <option value="donationWeek">捐献本周</option>
+              <option value="power">势力值</option>
+            </select>
+          </label>
+          <label id="flagField" class="field-wrap compact-field">
+            <span>标签筛选</span>
+            <select id="flagFilter" class="field">
+              <option value="all">全部成员</option>
+              <option value="active">活跃</option>
+              <option value="landFarmer">地奴</option>
+              <option value="idle">挂机</option>
+              <option value="donor">捐献号</option>
+            </select>
+          </label>
+          <div class="result-counter">
+            <span>筛选结果</span>
+            <strong id="memberCount">0</strong>
+          </div>
+        </div>
+        <div id="memberList" class="member-list"></div>
+      </section>
+
+      <section id="importSection" class="content-section" hidden>
+        <div class="section-head section-head--page">
+          <div>
+            <h2>导入文件</h2>
+            <p>支持直接选择 CSV 文件，也可以手动粘贴 CSV 内容</p>
+          </div>
+        </div>
+        <div class="import-grid">
+          <form id="snapshotForm" class="card import-card form-stack">
+            <label class="field-wrap">
+              <span>赛区 ID</span>
+              <input id="snapshotZoneId" class="field" placeholder="zone-demo" />
+            </label>
+            <label class="field-wrap">
+              <span>赛季 ID</span>
+              <input id="snapshotSeasonId" class="field" placeholder="season-current" />
+            </label>
+            <label class="field-wrap">
+              <span>统计时间</span>
+              <input id="snapshotRecordedAt" class="field" placeholder="默认当前时间" />
+            </label>
+            <label class="field-wrap">
+              <span>来源文件名</span>
+              <input id="snapshotSourceName" class="field" placeholder="同盟统计xxxx.csv" />
+            </label>
+            <label class="field-wrap">
+              <span>选择 CSV 文件</span>
+              <input id="snapshotFile" class="field file-field" type="file" accept=".csv,text/csv" />
+            </label>
+            <label class="field-wrap">
+              <span>CSV 内容</span>
+              <textarea id="snapshotCsvText" class="field textarea" placeholder="选文件后会自动填入，也可以手动粘贴"></textarea>
+            </label>
+            <button id="submitSnapshotButton" class="button primary button-block" type="submit">导入并生成赛季</button>
+          </form>
+          <div class="card import-help">
+            <h3>导入规则</h3>
+            <ul class="help-list">
+              <li>先登录，未登录不会进入主界面。</li>
+              <li>如果系统里没有任何数据，会直接停留在这个导入页。</li>
+              <li>导入成功后，首页默认回到当前赛季。</li>
+              <li>文件名里如果带时间，后台会自动识别统计时间。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
