@@ -515,7 +515,6 @@ function renderAlliances() {
           <tr>
             <th>${renderSortButton('archive', 'memberName', '成员', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'archiveType', '归档类型', state.archiveSort)}</th>
-            <th>${renderSortButton('archive', 'suggestion', '处理建议', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'state', '所属州', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'alliance', '门阀', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'contributionRank', '贡献排行', state.archiveSort)}</th>
@@ -524,9 +523,6 @@ function renderAlliances() {
             <th>${renderSortButton('archive', 'assistWeek', '助攻本周', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'donationWeek', '捐献本周', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'power', '势力值', state.archiveSort)}</th>
-            <th>${renderSortButton('archive', 'activityScore', '活跃分', state.archiveSort)}</th>
-            <th>${renderSortButton('archive', 'meritScore', '战功分', state.archiveSort)}</th>
-            <th>${renderSortButton('archive', 'relocationScore', '迁城分', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'compositeScore', '综合分', state.archiveSort)}</th>
           </tr>
         </thead>
@@ -537,7 +533,6 @@ function renderAlliances() {
                 <tr>
                   <td>${escapeHtml(item.memberName)}</td>
                   <td>${escapeHtml(item.archiveType)}</td>
-                  <td>${escapeHtml(item.suggestion)}</td>
                   <td>${escapeHtml(item.state)}</td>
                   <td>${escapeHtml(item.alliance)}</td>
                   <td>${escapeHtml(item.contributionRank)}</td>
@@ -546,9 +541,6 @@ function renderAlliances() {
                   <td>${escapeHtml(formatNumber(item.assistWeek))}</td>
                   <td>${escapeHtml(formatNumber(item.donationWeek))}</td>
                   <td>${escapeHtml(formatNumber(item.power))}</td>
-                  <td>${escapeHtml(item.activityScore)}</td>
-                  <td>${escapeHtml(item.meritScore)}</td>
-                  <td>${escapeHtml(item.relocationScore)}</td>
                   <td>${escapeHtml(item.compositeScore)}</td>
                 </tr>
               `

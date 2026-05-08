@@ -745,6 +745,14 @@ function seedSampleSnapshot() {
     return;
   }
 
+  const cleanedSnapshots = store.snapshots.filter(
+    (snapshot) => !(snapshot.zoneId === 'zone-demo' && snapshot.sourceName === '演示环比快照')
+  );
+  if (cleanedSnapshots.length !== store.snapshots.length) {
+    store.snapshots = cleanedSnapshots;
+    writeStore(store);
+  }
+
   const sourceName = path.basename(SAMPLE_DOC);
   const existingBase = store.snapshots.find(
     (snapshot) => snapshot.zoneId === 'zone-demo' && snapshot.sourceName === sourceName
@@ -762,15 +770,6 @@ function seedSampleSnapshot() {
       csvText
     });
     store.snapshots.push(baseSnapshot);
-    changed = true;
-  }
-
-  const hasFollowup = store.snapshots.some(
-    (snapshot) => snapshot.zoneId === 'zone-demo' && snapshot.sourceName === '演示环比快照'
-  );
-
-  if (!hasFollowup && baseSnapshot) {
-    store.snapshots.push(createDemoFollowupSnapshot(baseSnapshot));
     changed = true;
   }
 
