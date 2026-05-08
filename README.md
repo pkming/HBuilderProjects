@@ -32,7 +32,12 @@
 2. 修改 docker/.env 里的 ADMIN_PASSWORD 和 ADMIN_TOKEN
 3. 执行：sh docker/deploy.sh up
 
-部署完成后默认通过 80 端口提供服务。
+部署完成后默认同时开放两个访问地址：
+
+1. http://服务器IP:80
+2. http://服务器IP:3100
+
+其中 80 和 3100 都会转发到容器内的 3100 端口。
 
 部署脚本会在服务器上强制执行以下动作：
 
@@ -49,8 +54,9 @@
 
 1. 安装 Git、Docker、Docker Compose 插件
 2. 在腾讯云安全组放行 80 端口
-3. 把项目代码上传到服务器
-4. 在项目根目录执行 sh docker/deploy.sh up
+3. 如果要直接访问 3100，也要放行 3100 端口
+4. 把项目代码上传到服务器
+5. 在项目根目录执行 sh docker/deploy.sh up
 
 如果需要 HTTPS，建议再用 Nginx 或腾讯云负载均衡做 443 反代。
 
