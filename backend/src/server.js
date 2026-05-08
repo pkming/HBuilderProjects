@@ -498,6 +498,129 @@ function buildArchiveRules() {
   ];
 }
 
+function buildMemberRegistry(snapshots) {
+  const registryMap = new Map();
+
+  snapshots
+    .slice()
+    .sort((left, right) => new Date(left.recordedAt) - new Date(right.recordedAt))
+    .forEach((snapshot) => {
+      snapshot.rows.forEach((row) => {
+        const existing = registryMap.get(row.memberName) || {
+          memberName: row.memberName,
+          projects: new Set(),
+          snapshotCount: 0,
+          firstSeenAt: snapshot.recordedAt,
+          lastSeenAt: snapshot.recordedAt,
+          firstProjectId: snapshot.zoneId,
+          latestProjectId: snapshot.zoneId,
+          latestAlliance: row.alliance,
+          latestState: row.state,
+          latestPower: row.power,
+          latestContributionWeek: row.contributionWeek,
+          latestMeritWeek: row.meritWeek,
+          latestAssistWeek: row.assistWeek,
+          latestArchiveType: classifyArchive(row).archiveType
+        };
+
+        existing.projects.add(snapshot.zoneId);
+        existing.snapshotCount += 1;
+        existing.lastSeenAt = snapshot.recordedAt;
+        existing.latestProjectId = snapshot.zoneId;
+        existing.latestAlliance = row.alliance;
+        existing.latestState = row.state;
+        existing.latestPower = row.power;
+        existing.latestContributionWeek = row.contributionWeek;
+        existing.latestMeritWeek = row.meritWeek;
+        existing.latestAssistWeek = row.assistWeek;
+        existing.latestArchiveType = classifyArchive(row).archiveType;
+        registryMap.set(row.memberName, existing);
+      });
+    });
+
+  const members = Array.from(registryMap.values())
+    .map((member) => ({
+      memberName: member.memberName,
+      projectCount: member.projects.size,
+      projects: Array.from(member.projects),
+      snapshotCount: member.snapshotCount,
+      firstSeenAt: member.firstSeenAt,
+      lastSeenAt: member.lastSeenAt,
+      firstProjectId: member.firstProjectId,
+      latestProjectId: member.latestProjectId,
+      latestAlliance: member.latestAlliance,
+      latestState: member.latestState,
+      latestPower: member.latestPower,
+      latestContributionWeek: member.latestContributionWeek,
+      latestMeritWeek: member.latestMeritWeek,
+      latestAssistWeek: member.latestAssistWeek,
+      latestArchiveType: member.latestArchiveType
+    }))
+    .sort((left, right) => right.projectCount - left.projectCount || new Date(right.lastSeenAt) - new Date(left.lastSeenAt));
+
+  return {
+    members,
+    summary: {
+      memberCount: members.length,
+      multiProjectCount: members.filter((member) => member.projectCount > 1).length,
+      projectCount: new Set(snapshots.map((snapshot) => snapshot.zoneId)).size,
+      snapshotCount: snapshots.length
+    }
+  };
+}
+
+function buildManagementBoard(members, memberChanges, registry) {
+  const byCompositeScore = (left, right) => (right.archive?.compositeScore || 0) - (left.archive?.compositeScore || 0);
+  const byRisk = (left, right) => {
+    const leftScore = (left.contributionWeek || 0) + (left.meritWeek || 0) + (left.assistWeek || 0);
+    const rightScore = (right.contributionWeek || 0) + (right.meritWeek || 0) + (right.assistWeek || 0);
+    return leftScore - rightScore;
+  };
+  const compactMember = (member) => ({
+    memberName: member.memberName,
+    archiveType: member.archive?.archiveType || '--',
+    alliance: member.alliance,
+    state: member.state,
+    power: member.power,
+    contributionWeek: member.contributionWeek,
+    meritWeek: member.meritWeek,
+    assistWeek: member.assistWeek,
+    projectCount: member.career?.projectCount || 1,
+    lastSeenAt: member.career?.lastSeenAt || null
+  });
+
+  return {
+    hometownMain: members
+      .filter((member) => member.archive?.archiveType === '老家待迁主力')
+      .slice()
+      .sort(byCompositeScore)
+      .slice(0, 12)
+      .map(compactMember),
+    frontlineLow: members
+      .filter((member) => member.archive?.archiveType === '前线低活跃观察')
+      .slice()
+      .sort(byRisk)
+      .slice(0, 12)
+      .map(compactMember),
+    lowActivity: members
+      .filter((member) => member.flags?.idle || member.archive?.archiveType === '老家低活跃观察')
+      .slice()
+      .sort(byRisk)
+      .slice(0, 12)
+      .map(compactMember),
+    activeFighters: members
+      .filter((member) => member.meritWeek > 0)
+      .slice()
+      .sort((left, right) => right.meritWeek - left.meritWeek)
+      .slice(0, 12)
+      .map(compactMember),
+    changes: memberChanges.slice(0, 12),
+    longTermMembers: registry.members
+      .filter((member) => member.projectCount > 1)
+      .slice(0, 12)
+  };
+}
+
 function buildMemberHistory(zoneSnapshots, latestMembers) {
   const snapshotColumns = zoneSnapshots.map((snapshot) => ({
     id: snapshot.id,
@@ -559,6 +682,8 @@ function buildMemberHistory(zoneSnapshots, latestMembers) {
 }
 
 function buildZoneDashboard(zoneId, snapshots) {
+  const memberRegistry = buildMemberRegistry(snapshots);
+  const registryMap = new Map(memberRegistry.members.map((member) => [member.memberName, member]));
   const zoneSnapshots = snapshots
     .filter((snapshot) => snapshot.zoneId === zoneId)
     .sort((left, right) => new Date(left.recordedAt) - new Date(right.recordedAt));
@@ -599,6 +724,7 @@ function buildZoneDashboard(zoneId, snapshots) {
         delta,
         flags,
         archive,
+        career: registryMap.get(row.memberName) || null,
         movement
       };
     })
@@ -653,6 +779,9 @@ function buildZoneDashboard(zoneId, snapshots) {
       currentAlliance: row.alliance,
       type: '新增'
     }));
+
+  const memberChanges = [...newMembers, ...movedMembers, ...removedMembers];
+  const managementBoard = buildManagementBoard(members, memberChanges, memberRegistry);
 
   const allianceMap = new Map();
   members.forEach((member) => {
@@ -718,8 +847,10 @@ function buildZoneDashboard(zoneId, snapshots) {
       results: archiveResults,
       rules: buildArchiveRules()
     },
+    board: managementBoard,
+    registry: memberRegistry,
     history: memberHistory,
-    memberChanges: [...newMembers, ...movedMembers, ...removedMembers],
+    memberChanges,
     members,
     seasons,
     timeline: zoneSnapshots.map(getSnapshotMeta).sort((left, right) => new Date(right.recordedAt) - new Date(left.recordedAt))

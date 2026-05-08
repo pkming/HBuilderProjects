@@ -44,17 +44,17 @@
       </section>
 
       <nav id="sectionTabs" class="tabs" hidden>
-        <button class="tab is-active" data-section="season" type="button">当前项目</button>
-        <button class="tab" data-section="alliances" type="button">归档结果</button>
-        <button class="tab" data-section="changes" type="button">规则说明</button>
-        <button class="tab" data-section="members" type="button">原始数据</button>
+        <button class="tab is-active" data-section="season" type="button">看板</button>
+        <button class="tab" data-section="alliances" type="button">归档</button>
+        <button class="tab" data-section="changes" type="button">成员档案</button>
+        <button class="tab" data-section="members" type="button">趋势</button>
         <button class="tab" data-section="import" type="button">导入</button>
       </nav>
 
       <section id="seasonSection" class="content-section" hidden>
         <div class="section-head section-head--page">
           <div>
-            <h2>当前项目</h2>
+            <h2>管理看板</h2>
             <p id="currentSeasonText">默认显示最新项目</p>
           </div>
         </div>
@@ -76,7 +76,7 @@
             <div class="section-head section-head--inner">
               <div>
                 <h3>归档分布</h3>
-                <p>按归档类型看人数、占比和代表成员</p>
+                <p>上传记录和当前归档分布</p>
               </div>
             </div>
             <div id="timelineList" class="list-stack"></div>
@@ -97,8 +97,8 @@
       <section id="changesSection" class="content-section" hidden>
         <div class="section-head section-head--page">
           <div>
-            <h2>规则说明</h2>
-            <p>归档分组和综合评分的判定规则</p>
+            <h2>成员档案</h2>
+            <p>跨项目统计成员跟随情况，判断老成员、回流和新成员</p>
           </div>
         </div>
         <div id="changesList" class="list-stack"></div>
@@ -107,8 +107,8 @@
       <section id="membersSection" class="content-section" hidden>
         <div class="section-head section-head--page">
           <div>
-            <h2>原始数据</h2>
-            <p>保留成员基础数据，同时补上归档类型和标签</p>
+            <h2>趋势数据</h2>
+            <p>按指标查看每次导入的成员变化</p>
           </div>
         </div>
         <div class="member-toolbar card toolbar-card">

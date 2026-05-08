@@ -359,10 +359,48 @@ function getHistoryRows() {
   });
 }
 
+function renderMemberLink(member) {
+  return `
+    <div class="mini-member">
+      <strong>${escapeHtml(member.memberName)}</strong>
+      <span>${escapeHtml(member.archiveType || member.latestArchiveType || '--')}</span>
+    </div>
+  `;
+}
+
+function renderBoardList(title, members, emptyText) {
+  return `
+    <section class="board-panel">
+      <div class="board-panel-head">
+        <h3>${escapeHtml(title)}</h3>
+        <span>${escapeHtml(members.length)}</span>
+      </div>
+      ${members.length
+        ? `<div class="board-list">
+            ${members
+              .map((member) => `
+                <div class="board-row">
+                  ${renderMemberLink(member)}
+                  <div class="board-values">
+                    <span>${escapeHtml(member.state || member.latestState || '--')}</span>
+                    <span>${escapeHtml(member.alliance || member.latestAlliance || '--')}</span>
+                    <span>跟 ${escapeHtml(member.projectCount || 1)} 项</span>
+                  </div>
+                </div>
+              `)
+              .join('')}
+          </div>`
+        : `<p class="empty-inline">${escapeHtml(emptyText)}</p>`}
+    </section>
+  `;
+}
+
 function renderSummary() {
   const overview = state.dashboard?.overview;
   const currentProject = getCurrentProject();
   const archiveSummary = state.dashboard?.archive?.summary;
+  const board = state.dashboard?.board;
+  const registrySummary = state.dashboard?.registry?.summary;
 
   if (!overview || !archiveSummary) {
     elements.summaryGrid.innerHTML = '';
@@ -388,7 +426,7 @@ function renderSummary() {
     ['前线占比', formatPercent(archiveSummary.totals.frontlineRatio)],
     ['本周有战功人数', archiveSummary.totals.meritActiveCount],
     ['本周无战功人数', archiveSummary.totals.noMeritCount],
-    ['当前项目', projectLabel]
+    ['跨项目成员', registrySummary?.multiProjectCount || 0]
   ];
 
   const stateRows = archiveSummary.stateStats || [];
@@ -433,6 +471,13 @@ function renderSummary() {
             .join('')}
         </tbody>
       </table>
+    </div>
+    <div class="board-grid">
+      ${renderBoardList('老家待迁主力', board?.hometownMain || [], '暂无待迁主力')}
+      ${renderBoardList('前线低活跃', board?.frontlineLow || [], '暂无前线低活跃')}
+      ${renderBoardList('低活跃观察', board?.lowActivity || [], '暂无低活跃观察')}
+      ${renderBoardList('战功活跃', board?.activeFighters || [], '暂无战功记录')}
+      ${renderBoardList('跨项目老成员', board?.longTermMembers || [], '暂无跨项目成员')}
     </div>
   `;
 }
@@ -553,28 +598,42 @@ function renderAlliances() {
 }
 
 function renderChanges() {
-  const rules = state.dashboard?.archive?.rules || [];
-  if (!rules.length) {
-    elements.changesList.innerHTML = '<article class="empty-state"><p>暂无归档规则说明。</p></article>';
+  const registryMembers = state.dashboard?.registry?.members || [];
+  if (!registryMembers.length) {
+    elements.changesList.innerHTML = '<article class="empty-state"><p>暂无成员档案。</p></article>';
     return;
   }
 
   elements.changesList.innerHTML = `
-    <div class="table-shell compact-shell">
-      <table class="data-table compact-table">
+    <div class="table-shell">
+      <table class="data-table member-table">
         <thead>
           <tr>
-            <th>项目</th>
-            <th>规则</th>
+            <th>成员</th>
+            <th>跟随项目数</th>
+            <th>统计次数</th>
+            <th>首次出现</th>
+            <th>最近出现</th>
+            <th>最近项目</th>
+            <th>最近门阀</th>
+            <th>最近州</th>
+            <th>最近归档</th>
           </tr>
         </thead>
         <tbody>
-          ${rules
+          ${registryMembers
             .map(
-              (rule) => `
+              (member) => `
                 <tr>
-                  <td>${escapeHtml(rule.item)}</td>
-                  <td>${escapeHtml(rule.rule)}</td>
+                  <td>${escapeHtml(member.memberName)}</td>
+                  <td>${escapeHtml(member.projectCount)}</td>
+                  <td>${escapeHtml(member.snapshotCount)}</td>
+                  <td>${escapeHtml(formatDate(member.firstSeenAt))}</td>
+                  <td>${escapeHtml(formatDate(member.lastSeenAt))}</td>
+                  <td>${escapeHtml(member.latestProjectId)}</td>
+                  <td>${escapeHtml(member.latestAlliance)}</td>
+                  <td>${escapeHtml(member.latestState)}</td>
+                  <td>${escapeHtml(member.latestArchiveType)}</td>
                 </tr>
               `
             )

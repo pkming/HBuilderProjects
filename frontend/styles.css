@@ -219,6 +219,83 @@ h1, h2, h3, p { margin-top: 0; }
   gap: 8px;
 }
 
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.board-panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-soft);
+  overflow: hidden;
+}
+
+.board-panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.board-panel-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.board-panel-head span,
+.empty-inline,
+.mini-member span,
+.board-values {
+  color: var(--muted);
+}
+
+.board-list {
+  display: grid;
+}
+
+.board-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.board-row:last-child {
+  border-bottom: 0;
+}
+
+.mini-member strong,
+.mini-member span {
+  display: block;
+}
+
+.mini-member strong {
+  font-size: 13px;
+}
+
+.mini-member span,
+.board-values,
+.empty-inline {
+  font-size: 12px;
+}
+
+.board-values {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.empty-inline {
+  margin: 0;
+  padding: 12px;
+}
+
 .table-shell {
   overflow-x: auto;
   border: 1px solid var(--line);
@@ -348,7 +425,8 @@ h1, h2, h3, p { margin-top: 0; }
   .member-toolbar,
   .season-top-grid,
   .import-grid,
-  .summary-grid {
+  .summary-grid,
+  .board-grid {
     grid-template-columns: 1fr;
   }
 
