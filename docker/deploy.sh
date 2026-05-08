@@ -6,6 +6,8 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DOCKER_DIR="$ROOT_DIR/docker"
 ENV_FILE="$DOCKER_DIR/.env"
 DEFAULT_BRANCH="main"
+USE_SUDO="0"
+COMPOSE_MODE=""
 
 if [ ! -f "$ENV_FILE" ]; then
   cp "$DOCKER_DIR/.env.example" "$ENV_FILE"
@@ -15,6 +17,41 @@ fi
 
 DEPLOY_BRANCH=$(grep '^DEPLOY_BRANCH=' "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d '=' -f 2-)
 DEPLOY_BRANCH=${DEPLOY_BRANCH:-$DEFAULT_BRANCH}
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "[error] 未找到 docker，请先安装。"
+  exit 1
+fi
+
+if docker info >/dev/null 2>&1; then
+  USE_SUDO="0"
+elif command -v sudo >/dev/null 2>&1; then
+  USE_SUDO="1"
+  echo "[docker] 当前用户无 docker 权限，后续命令将自动使用 sudo。"
+else
+  echo "[error] 当前用户无 docker 权限，且系统未安装 sudo。"
+  exit 1
+fi
+
+run_docker() {
+  if [ "$USE_SUDO" = "1" ]; then
+    sudo docker "$@"
+  else
+    docker "$@"
+  fi
+}
+
+run_compose() {
+  if [ "$COMPOSE_MODE" = "plugin" ]; then
+    run_docker compose "$@"
+  else
+    if [ "$USE_SUDO" = "1" ]; then
+      sudo docker-compose "$@"
+    else
+      docker-compose "$@"
+    fi
+  fi
+}
 
 echo "pull latest code..."
 cd "$ROOT_DIR"
@@ -26,20 +63,20 @@ echo "code synced: origin/$DEPLOY_BRANCH"
 cmd="${1:-up}"
 
 compose_cmd() {
-  if docker compose version >/dev/null 2>&1; then
-    echo "docker compose"
+  if run_docker compose version >/dev/null 2>&1; then
+    COMPOSE_MODE="plugin"
     return
   fi
   if command -v docker-compose >/dev/null 2>&1; then
-    echo "docker-compose"
+    COMPOSE_MODE="standalone"
     return
   fi
-  echo ""
+  COMPOSE_MODE=""
 }
 
-COMPOSE="$(compose_cmd)"
+compose_cmd
 
-if [ -z "$COMPOSE" ]; then
+if [ -z "$COMPOSE_MODE" ]; then
   echo "[error] 未找到 docker compose / docker-compose，请先安装。"
   exit 1
 fi
@@ -48,50 +85,50 @@ cd "$DOCKER_DIR"
 
 case "$cmd" in
   up)
-    $COMPOSE --env-file .env up -d --build
+    run_compose --env-file .env up -d --build
     ;;
   rebuild)
     echo "[rebuild] 停止容器..."
-    $COMPOSE --env-file .env down
+    run_compose --env-file .env down
     echo "[rebuild] 清理悬空镜像..."
-    docker image prune -f
+    run_docker image prune -f
     echo "[rebuild] 重新构建镜像..."
-    $COMPOSE --env-file .env build
+    run_compose --env-file .env build
     echo "[rebuild] 启动服务..."
-    $COMPOSE --env-file .env up -d
+    run_compose --env-file .env up -d
     ;;
   rebuild-fresh)
     echo "[rebuild-fresh] 停止容器..."
-    $COMPOSE --env-file .env down
+    run_compose --env-file .env down
     echo "[rebuild-fresh] 清理所有未使用镜像..."
-    docker image prune -a -f
+    run_docker image prune -a -f
     echo "[rebuild-fresh] 全新构建..."
-    $COMPOSE --env-file .env build --pull --no-cache
+    run_compose --env-file .env build --pull --no-cache
     echo "[rebuild-fresh] 启动服务..."
-    $COMPOSE --env-file .env up -d
+    run_compose --env-file .env up -d
     ;;
   down)
-    $COMPOSE --env-file .env down
+    run_compose --env-file .env down
     ;;
   restart)
-    $COMPOSE --env-file .env down
-    $COMPOSE --env-file .env up -d --build
+    run_compose --env-file .env down
+    run_compose --env-file .env up -d --build
     ;;
   logs)
-    $COMPOSE --env-file .env logs -f --tail=200
+    run_compose --env-file .env logs -f --tail=200
     ;;
   ps)
-    $COMPOSE --env-file .env ps
+    run_compose --env-file .env ps
     ;;
   clean)
-    docker system prune -f
+    run_docker system prune -f
     ;;
   clean-all)
     echo "[clean-all] ⚠️  将清理所有未使用的 Docker 资源..."
     printf '确认执行? (y/N): '
     read confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-      docker system prune -a -f --volumes
+      run_docker system prune -a -f --volumes
     else
       echo "[clean-all] 取消操作"
     fi
