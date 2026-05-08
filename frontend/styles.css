@@ -225,6 +225,10 @@ h1, h2, h3, p { margin-top: 0; }
   gap: 10px;
 }
 
+.summary-grid > .board-grid {
+  grid-column: 1 / -1;
+}
+
 .board-panel {
   border: 1px solid var(--line);
   border-radius: 12px;

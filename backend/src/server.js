@@ -750,7 +750,8 @@ function buildZoneDashboard(zoneId, snapshots) {
       activityScore: member.archive.activityScore,
       meritScore: member.archive.meritScore,
       relocationScore: member.archive.relocationScore,
-      compositeScore: member.archive.compositeScore
+      compositeScore: member.archive.compositeScore,
+      projectCount: member.career?.projectCount || 1
     }));
 
   const removedMembers = previousSnapshot

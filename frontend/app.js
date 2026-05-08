@@ -569,6 +569,7 @@ function renderAlliances() {
             <th>${renderSortButton('archive', 'donationWeek', '捐献本周', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'power', '势力值', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'compositeScore', '综合分', state.archiveSort)}</th>
+            <th>跟随</th>
           </tr>
         </thead>
         <tbody>
@@ -587,6 +588,7 @@ function renderAlliances() {
                   <td>${escapeHtml(formatNumber(item.donationWeek))}</td>
                   <td>${escapeHtml(formatNumber(item.power))}</td>
                   <td>${escapeHtml(item.compositeScore)}</td>
+                  <td>${escapeHtml(`${item.projectCount || 1} 项`)}</td>
                 </tr>
               `
             )
@@ -718,6 +720,7 @@ function renderMembers() {
             <th>${renderSortButton('members', 'donationWeek', '捐献本周', state.membersSort)}</th>
             <th>${renderSortButton('members', 'power', '势力值', state.membersSort)}</th>
             <th>${renderSortButton('members', 'compositeScore', '综合分', state.membersSort)}</th>
+            <th>跟随</th>
             <th>标签</th>
           </tr>
         </thead>
@@ -744,6 +747,7 @@ function renderMembers() {
                   <td>${escapeHtml(formatNumber(member.donationWeek))}</td>
                   <td>${escapeHtml(formatNumber(member.power))}</td>
                   <td>${escapeHtml(member.archive?.compositeScore ?? '--')}</td>
+                  <td>${escapeHtml(`${member.career?.projectCount || 1} 项`)}</td>
                   <td>${escapeHtml(tags)}</td>
                 </tr>
               `;
@@ -822,7 +826,6 @@ async function refreshDashboard() {
     return;
   }
 
-  setStatus('正在加载当前赛季...', 'neutral');
   setStatus('正在加载当前项目...', 'neutral');
 
   const meta = await apiRequest('/meta');
