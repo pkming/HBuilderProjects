@@ -287,6 +287,42 @@ function getMemberTagText(member) {
   ].filter(Boolean).join(' / ') || '--';
 }
 
+function getArchiveShortTag(archiveType) {
+  return {
+    前线主战核心: '主',
+    前线高活跃支援: '援',
+    前线普通活跃: '活',
+    前线低活跃观察: '低',
+    老家待迁主力: '迁',
+    老家活跃后备: '备',
+    老家普通成员: '普',
+    老家低活跃观察: '闲'
+  }[archiveType] || '其';
+}
+
+function getAllianceShortTag(alliance) {
+  const value = typeof alliance === 'string' ? alliance.trim() : '';
+  if (!value || value === '未分盟' || value === '无门阀') {
+    return '无';
+  }
+
+  if (value.includes('先锋')) {
+    return '先';
+  }
+  if (value.includes('妖星')) {
+    return '妖';
+  }
+  if (value.includes('玄甲')) {
+    return '玄';
+  }
+
+  return Array.from(value.replace(/[丨|｜\s]/g, ''))[0] || '其';
+}
+
+function renderMiniTag(label, title, variant = '') {
+  return `<span class="mini-tag ${escapeHtml(variant)}" title="${escapeHtml(title || label)}">${escapeHtml(label)}</span>`;
+}
+
 function getCurrentProject() {
   if (!state.dashboard) {
     return null;
@@ -615,16 +651,16 @@ function renderAlliances() {
         <thead>
           <tr>
             <th>${renderSortButton('archive', 'memberName', '成员', state.archiveSort)}</th>
-            <th>${renderSortButton('archive', 'archiveType', '归档类型', state.archiveSort)}</th>
+            <th>${renderSortButton('archive', 'archiveType', '档', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'state', '所属州', state.archiveSort)}</th>
-            <th>${renderSortButton('archive', 'alliance', '门阀', state.archiveSort)}</th>
+            <th>${renderSortButton('archive', 'alliance', '门', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'contributionRank', '贡献排行', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'contributionWeek', '贡献本周', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'meritWeek', '战功本周', state.archiveSort)}</th>
-            <th>${renderSortButton('archive', 'assistWeek', '助攻本周', state.archiveSort)}</th>
-            <th>${renderSortButton('archive', 'donationWeek', '捐献本周', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'power', '势力值', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'powerDelta', '势力变化', state.archiveSort)}</th>
+            <th>${renderSortButton('archive', 'assistWeek', '助攻本周', state.archiveSort)}</th>
+            <th>${renderSortButton('archive', 'donationWeek', '捐献本周', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'compositeScore', '综合分', state.archiveSort)}</th>
             <th>跟随</th>
           </tr>
@@ -635,16 +671,16 @@ function renderAlliances() {
               (item) => `
                 <tr>
                   <td>${escapeHtml(item.memberName)}</td>
-                  <td>${escapeHtml(item.archiveType)}</td>
+                  <td>${renderMiniTag(getArchiveShortTag(item.archiveType), item.archiveType, 'archive-tag')}</td>
                   <td>${escapeHtml(item.state)}</td>
-                  <td>${escapeHtml(item.alliance)}</td>
+                  <td>${renderMiniTag(getAllianceShortTag(item.alliance), item.alliance, 'alliance-tag')}</td>
                   <td>${escapeHtml(item.contributionRank)}</td>
                   <td>${escapeHtml(formatNumber(item.contributionWeek))}</td>
                   <td>${escapeHtml(formatNumber(item.meritWeek))}</td>
-                  <td>${escapeHtml(formatNumber(item.assistWeek))}</td>
-                  <td>${escapeHtml(formatNumber(item.donationWeek))}</td>
                   <td>${escapeHtml(formatNumber(item.power))}</td>
                   <td class="${escapeHtml(deltaClass(item.powerDelta))}">${escapeHtml(formatDelta(item.powerDelta))}</td>
+                  <td>${escapeHtml(formatNumber(item.assistWeek))}</td>
+                  <td>${escapeHtml(formatNumber(item.donationWeek))}</td>
                   <td>${escapeHtml(item.compositeScore)}</td>
                   <td>${escapeHtml(`${item.projectCount || 1} 项`)}</td>
                 </tr>
@@ -768,16 +804,16 @@ function renderMembers() {
         <thead>
           <tr>
             <th>${renderSortButton('members', 'memberName', '成员', state.membersSort)}</th>
-            <th>${renderSortButton('members', 'archiveType', '归档类型', state.membersSort)}</th>
-            <th>${renderSortButton('members', 'alliance', '门阀', state.membersSort)}</th>
+            <th>${renderSortButton('members', 'archiveType', '档', state.membersSort)}</th>
+            <th>${renderSortButton('members', 'alliance', '门', state.membersSort)}</th>
             <th>${renderSortButton('members', 'state', '州', state.membersSort)}</th>
             <th>${renderSortButton('members', 'contributionRank', '贡献排行', state.membersSort)}</th>
             <th>${renderSortButton('members', 'contributionWeek', '贡献本周', state.membersSort)}</th>
             <th>${renderSortButton('members', 'meritWeek', '战功本周', state.membersSort)}</th>
-            <th>${renderSortButton('members', 'assistWeek', '助攻本周', state.membersSort)}</th>
-            <th>${renderSortButton('members', 'donationWeek', '捐献本周', state.membersSort)}</th>
             <th>${renderSortButton('members', 'power', '势力值', state.membersSort)}</th>
             <th>${renderSortButton('members', 'powerDelta', '势力变化', state.membersSort)}</th>
+            <th>${renderSortButton('members', 'assistWeek', '助攻本周', state.membersSort)}</th>
+            <th>${renderSortButton('members', 'donationWeek', '捐献本周', state.membersSort)}</th>
             <th>${renderSortButton('members', 'compositeScore', '综合分', state.membersSort)}</th>
             <th>跟随</th>
             <th>标签</th>
@@ -791,16 +827,16 @@ function renderMembers() {
               return `
                 <tr>
                   <td>${escapeHtml(member.memberName)}</td>
-                  <td>${escapeHtml(member.archive?.archiveType || '--')}</td>
-                  <td>${escapeHtml(member.alliance)}</td>
+                  <td>${renderMiniTag(getArchiveShortTag(member.archive?.archiveType), member.archive?.archiveType || '--', 'archive-tag')}</td>
+                  <td>${renderMiniTag(getAllianceShortTag(member.alliance), member.alliance, 'alliance-tag')}</td>
                   <td>${escapeHtml(member.state)}</td>
                   <td>${escapeHtml(member.contributionRank)}</td>
                   <td>${escapeHtml(formatNumber(member.contributionWeek))}</td>
                   <td>${escapeHtml(formatNumber(member.meritWeek))}</td>
-                  <td>${escapeHtml(formatNumber(member.assistWeek))}</td>
-                  <td>${escapeHtml(formatNumber(member.donationWeek))}</td>
                   <td>${escapeHtml(formatNumber(member.power))}</td>
                   <td class="${escapeHtml(deltaClass(member.delta?.power))}">${escapeHtml(formatDelta(member.delta?.power))}</td>
+                  <td>${escapeHtml(formatNumber(member.assistWeek))}</td>
+                  <td>${escapeHtml(formatNumber(member.donationWeek))}</td>
                   <td>${escapeHtml(member.archive?.compositeScore ?? '--')}</td>
                   <td>${escapeHtml(`${member.career?.projectCount || 1} 项`)}</td>
                   <td>${escapeHtml(tags)}</td>

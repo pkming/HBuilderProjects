@@ -459,7 +459,7 @@ h1, h2, h3, p { margin-top: 0; }
 }
 
 .member-table {
-  min-width: 1080px;
+  min-width: 920px;
 }
 
 .member-toolbar {
@@ -473,6 +473,31 @@ h1, h2, h3, p { margin-top: 0; }
   margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.mini-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  min-height: 24px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.archive-tag {
+  color: var(--success);
+  background: rgba(235, 201, 122, 0.12);
+}
+
+.alliance-tag {
+  color: var(--donor);
+  background: rgba(159, 211, 255, 0.12);
 }
 
 .metric-matrix-table {
