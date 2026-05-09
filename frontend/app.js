@@ -96,7 +96,9 @@ async function apiRequest(path, options = {}) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload.message || '请求失败');
+    const error = new Error(payload.message || '请求失败');
+    error.payload = payload;
+    throw error;
   }
 
   return payload;
@@ -568,6 +570,7 @@ function renderTimeline() {
             <th>来源</th>
             <th>人数</th>
             <th>门阀</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -579,6 +582,7 @@ function renderTimeline() {
                   <td>${escapeHtml(snapshot.sourceName)}</td>
                   <td>${escapeHtml(snapshot.memberCount)}</td>
                   <td>${escapeHtml(snapshot.allianceCount)}</td>
+                  <td><button class="text-button danger" type="button" data-delete-snapshot="${escapeHtml(snapshot.id)}">删除</button></td>
                 </tr>
               `
             )
@@ -587,6 +591,15 @@ function renderTimeline() {
       </table>
     </div>
   `;
+}
+
+function formatImportError(error) {
+  const validation = error.payload?.validation;
+  if (!validation?.errors?.length) {
+    return error.message || '导入失败';
+  }
+
+  return `${error.message}\n${validation.errors.slice(0, 8).join('\n')}`;
 }
 
 function renderAlliances() {
@@ -990,10 +1003,24 @@ async function submitSnapshot(event) {
     await refreshDashboard();
     setStatus('文件导入成功，已加入当前项目。', 'success');
   } catch (error) {
-    setStatus(error.message || '导入失败', 'error');
+    setStatus(formatImportError(error), 'error');
   } finally {
     elements.submitSnapshotButton.disabled = false;
   }
+}
+
+async function deleteSnapshot(snapshotId) {
+  const snapshot = (getCurrentProject()?.snapshots || []).find((item) => item.id === snapshotId);
+  const label = snapshot ? `${formatDate(snapshot.recordedAt)} ${snapshot.sourceName}` : snapshotId;
+  if (!window.confirm(`确定删除这次统计吗？\n${label}\n删除后会重新计算看板、归档和趋势。`)) {
+    return;
+  }
+
+  await apiRequest(`/snapshots/${encodeURIComponent(snapshotId)}`, {
+    method: 'DELETE'
+  });
+  setStatus('异常统计记录已删除。', 'success');
+  await refreshDashboard();
 }
 
 elements.loginButton.addEventListener('click', loginAsAdmin);
@@ -1051,6 +1078,16 @@ elements.summaryGrid.addEventListener('click', (event) => {
 
   state.boardView = target.dataset.boardView;
   renderSummary();
+});
+elements.timelineList.addEventListener('click', (event) => {
+  const target = event.target.closest('[data-delete-snapshot]');
+  if (!target) {
+    return;
+  }
+
+  deleteSnapshot(target.dataset.deleteSnapshot).catch((error) => {
+    setStatus(error.message || '删除失败', 'error');
+  });
 });
 elements.snapshotFile.addEventListener('change', handleFileChange);
 elements.snapshotForm.addEventListener('submit', submitSnapshot);

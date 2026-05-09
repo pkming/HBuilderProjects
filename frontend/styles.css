@@ -135,9 +135,21 @@ h1, h2, h3, p { margin-top: 0; }
   border: 1px solid var(--line);
 }
 
-.status { margin: 14px 0 0; line-height: 1.6; }
+.status { margin: 14px 0 0; line-height: 1.6; white-space: pre-line; }
 .status.success { color: var(--success); }
 .status.error { color: var(--danger); }
+
+.text-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.text-button.danger {
+  color: var(--danger);
+}
 
 .app-header {
   display: flex;

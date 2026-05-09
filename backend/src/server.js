@@ -12,6 +12,22 @@ const LEGACY_DEFAULT_ADMIN_PASSWORD = 'admin123456';
 const STORE_FILE = path.join(__dirname, '../data/store.json');
 const SAMPLE_DOC = path.resolve(__dirname, '../docs/同盟统计2026年05月08日11时00分34秒.csv');
 const FRONTEND_DIR = path.resolve(__dirname, '../../frontend');
+const REQUIRED_CSV_HEADERS = [
+  '成员',
+  '贡献排行',
+  '贡献本周',
+  '战功本周',
+  '助攻本周',
+  '捐献本周',
+  '贡献总量',
+  '战功总量',
+  '助攻总量',
+  '捐献总量',
+  '势力值',
+  '所属州',
+  '门阀'
+];
+const NUMERIC_CSV_HEADERS = REQUIRED_CSV_HEADERS.filter((header) => !['成员', '所属州', '门阀'].includes(header));
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -85,6 +101,20 @@ function parseNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function parseStrictNumber(value) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return null;
+  }
+
+  const normalized = String(value).replace(/,/g, '').trim();
+  if (!/^-?\d+(\.\d+)?$/.test(normalized)) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function extractRecordedAt(sourceName) {
   if (typeof sourceName !== 'string') {
     return new Date().toISOString();
@@ -134,6 +164,79 @@ function parseCsvText(csvText) {
       alliance: record['门阀'] || '未分盟'
     };
   });
+}
+
+function validateCsvText(csvText) {
+  const lines = String(csvText)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const errors = [];
+  const warnings = [];
+
+  if (lines.length < 2) {
+    return {
+      valid: false,
+      errors: ['CSV 内容不足，至少需要表头和一行成员数据'],
+      warnings,
+      rowCount: 0
+    };
+  }
+
+  const headers = parseCsvLine(lines[0]);
+  const missingHeaders = REQUIRED_CSV_HEADERS.filter((header) => !headers.includes(header));
+  if (missingHeaders.length) {
+    errors.push(`缺少必要表头：${missingHeaders.join('、')}`);
+  }
+
+  const memberNames = new Set();
+  let validMemberCount = 0;
+  lines.slice(1).forEach((line, index) => {
+    const values = parseCsvLine(line);
+    const record = {};
+    headers.forEach((header, headerIndex) => {
+      record[header] = values[headerIndex] || '';
+    });
+
+    const rowNumber = index + 2;
+    const memberName = String(record['成员'] || '').trim();
+    if (!memberName) {
+      errors.push(`第 ${rowNumber} 行缺少成员名`);
+    } else {
+      validMemberCount += 1;
+      if (memberNames.has(memberName)) {
+        warnings.push(`成员 ${memberName} 在文件中重复出现`);
+      }
+      memberNames.add(memberName);
+    }
+
+    NUMERIC_CSV_HEADERS.forEach((header) => {
+      const value = parseStrictNumber(record[header]);
+      if (value === null) {
+        errors.push(`第 ${rowNumber} 行 ${header} 不是有效数字`);
+        return;
+      }
+      if (value < 0) {
+        errors.push(`第 ${rowNumber} 行 ${header} 不能为负数`);
+      }
+    });
+  });
+
+  if (validMemberCount < 20) {
+    errors.push(`有效成员数只有 ${validMemberCount}，不像完整同盟统计文件`);
+  }
+
+  if (warnings.length > 20) {
+    warnings.length = 20;
+    warnings.push('重复成员提示过多，已截断显示');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors: errors.slice(0, 30),
+    warnings,
+    rowCount: validMemberCount
+  };
 }
 
 function normalizeSnapshot(input) {
@@ -1024,6 +1127,15 @@ app.post('/api/snapshots', (request, response) => {
     return;
   }
 
+  const validation = validateCsvText(csvText);
+  if (!validation.valid) {
+    response.status(400).json({
+      message: `CSV 校验失败：${validation.errors.slice(0, 5).join('；')}`,
+      validation
+    });
+    return;
+  }
+
   const snapshot = createSnapshot({
     zoneId,
     seasonId: zoneId,
@@ -1047,6 +1159,26 @@ app.post('/api/snapshots', (request, response) => {
 
   response.status(201).json({
     message: '快照导入成功',
+    snapshot: getSnapshotMeta(snapshot),
+    validation
+  });
+});
+
+app.delete('/api/snapshots/:snapshotId', (request, response) => {
+  const snapshotId = typeof request.params.snapshotId === 'string' ? request.params.snapshotId : '';
+  const store = readStore();
+  const snapshot = store.snapshots.find((item) => item.id === snapshotId);
+
+  if (!snapshot) {
+    response.status(404).json({ message: '未找到要删除的统计记录' });
+    return;
+  }
+
+  store.snapshots = store.snapshots.filter((item) => item.id !== snapshotId);
+  writeStore(store);
+
+  response.json({
+    message: '统计记录已删除',
     snapshot: getSnapshotMeta(snapshot)
   });
 });
