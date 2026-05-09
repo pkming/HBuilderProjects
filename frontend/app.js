@@ -13,6 +13,7 @@ const state = {
   keyword: '',
   flag: 'all',
   memberMetric: 'latest',
+  boardView: 'hometownMain',
   archiveSort: {
     key: 'compositeScore',
     direction: 'desc'
@@ -395,6 +396,31 @@ function renderBoardList(title, members, emptyText) {
   `;
 }
 
+function getBoardSections(board = {}) {
+  return [
+    { key: 'hometownMain', title: '待迁', fullTitle: '老家待迁主力', emptyText: '暂无待迁主力', members: board.hometownMain || [] },
+    { key: 'frontlineLow', title: '前线低活', fullTitle: '前线低活跃', emptyText: '暂无前线低活跃', members: board.frontlineLow || [] },
+    { key: 'lowActivity', title: '观察', fullTitle: '低活跃观察', emptyText: '暂无低活跃观察', members: board.lowActivity || [] },
+    { key: 'activeFighters', title: '战功', fullTitle: '战功活跃', emptyText: '暂无战功记录', members: board.activeFighters || [] },
+    { key: 'longTermMembers', title: '老成员', fullTitle: '跨项目老成员', emptyText: '暂无跨项目成员', members: board.longTermMembers || [] }
+  ];
+}
+
+function renderBoardSwitch(sections) {
+  return `
+    <div class="board-switch" role="tablist" aria-label="看板名单切换">
+      ${sections
+        .map((section) => `
+          <button class="board-switch-button ${state.boardView === section.key ? 'is-active' : ''}" type="button" data-board-view="${escapeHtml(section.key)}">
+            <span>${escapeHtml(section.title)}</span>
+            <strong>${escapeHtml(section.members.length)}</strong>
+          </button>
+        `)
+        .join('')}
+    </div>
+  `;
+}
+
 function renderSummary() {
   const overview = state.dashboard?.overview;
   const currentProject = getCurrentProject();
@@ -430,23 +456,24 @@ function renderSummary() {
   ];
 
   const stateRows = archiveSummary.stateStats || [];
+  const boardSections = getBoardSections(board);
+  if (!boardSections.some((section) => section.key === state.boardView)) {
+    state.boardView = boardSections[0].key;
+  }
+  const activeBoard = boardSections.find((section) => section.key === state.boardView) || boardSections[0];
 
   elements.summaryGrid.innerHTML = `
-    <div class="table-shell compact-shell">
-      <table class="data-table summary-table">
-        <tbody>
-          ${cards
-            .map(
-              ([label, value]) => `
-                <tr>
-                  <th>${escapeHtml(label)}</th>
-                  <td>${escapeHtml(value)}</td>
-                </tr>
-              `
-            )
-            .join('')}
-        </tbody>
-      </table>
+    <div class="kpi-grid">
+      ${cards
+        .map(
+          ([label, value]) => `
+            <div class="kpi-item">
+              <span>${escapeHtml(label)}</span>
+              <strong>${escapeHtml(value)}</strong>
+            </div>
+          `
+        )
+        .join('')}
     </div>
     <div class="table-shell compact-shell">
       <table class="data-table compact-table">
@@ -472,12 +499,11 @@ function renderSummary() {
         </tbody>
       </table>
     </div>
+    <div class="board-switch-card">
+      ${renderBoardSwitch(boardSections)}
+    </div>
     <div class="board-grid">
-      ${renderBoardList('老家待迁主力', board?.hometownMain || [], '暂无待迁主力')}
-      ${renderBoardList('前线低活跃', board?.frontlineLow || [], '暂无前线低活跃')}
-      ${renderBoardList('低活跃观察', board?.lowActivity || [], '暂无低活跃观察')}
-      ${renderBoardList('战功活跃', board?.activeFighters || [], '暂无战功记录')}
-      ${renderBoardList('跨项目老成员', board?.longTermMembers || [], '暂无跨项目成员')}
+      ${renderBoardList(activeBoard.fullTitle, activeBoard.members, activeBoard.emptyText)}
     </div>
   `;
 }
@@ -1000,6 +1026,15 @@ elements.memberList.addEventListener('click', (event) => {
 
   state.membersSort = toggleSort(state.membersSort, target.dataset.sortKey, target.dataset.sortKey === 'memberName' ? 'asc' : 'desc');
   renderMembers();
+});
+elements.summaryGrid.addEventListener('click', (event) => {
+  const target = event.target.closest('[data-board-view]');
+  if (!target) {
+    return;
+  }
+
+  state.boardView = target.dataset.boardView;
+  renderSummary();
 });
 elements.snapshotFile.addEventListener('change', handleFileChange);
 elements.snapshotForm.addEventListener('submit', submitSnapshot);
