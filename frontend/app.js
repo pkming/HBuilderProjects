@@ -14,6 +14,7 @@ const state = {
   flag: 'all',
   memberMetric: 'latest',
   boardView: 'hometownMain',
+  archiveFilter: '',
   archiveSort: {
     key: 'compositeScore',
     direction: 'desc'
@@ -387,7 +388,8 @@ function getFilteredMembers() {
 }
 
 function getSortedArchiveResults() {
-  const rows = [...(state.dashboard?.archive?.results || [])];
+  const rows = [...(state.dashboard?.archive?.results || [])]
+    .filter((row) => !state.archiveFilter || row.archiveType === state.archiveFilter);
 
   return rows.sort((left, right) => compareValues(
     left?.[state.archiveSort.key],
@@ -617,7 +619,7 @@ function renderTimeline() {
           ${archiveTypeStats
             .map(
               (item) => `
-                <tr>
+                <tr class="clickable-row" data-archive-type="${escapeHtml(item.archiveType)}">
                   <td>${escapeHtml(item.archiveType)}</td>
                   <td>${escapeHtml(item.count)}</td>
                   <td>${escapeHtml(formatPercent(item.ratio))}</td>
@@ -671,12 +673,16 @@ function formatImportError(error) {
 
 function renderAlliances() {
   const archiveResults = getSortedArchiveResults();
+  const filterBar = state.archiveFilter
+    ? `<div class="filter-bar"><span>当前筛选：${escapeHtml(state.archiveFilter)} · ${escapeHtml(archiveResults.length)} 人</span><button class="text-button" type="button" data-clear-archive-filter="1">查看全部</button></div>`
+    : '';
   if (!archiveResults.length) {
-    elements.allianceGrid.innerHTML = '<article class="empty-state"><p>暂无归档结果。</p></article>';
+    elements.allianceGrid.innerHTML = `${filterBar}<article class="empty-state"><p>暂无匹配成员。</p></article>`;
     return;
   }
 
   elements.allianceGrid.innerHTML = `
+    ${filterBar}
     <div class="table-shell">
       <table class="data-table member-table">
         <thead>
@@ -1106,6 +1112,13 @@ elements.flagFilter.addEventListener('change', (event) => {
   renderMembers();
 });
 elements.allianceGrid.addEventListener('click', (event) => {
+  const clearFilterTarget = event.target.closest('[data-clear-archive-filter]');
+  if (clearFilterTarget) {
+    state.archiveFilter = '';
+    renderAlliances();
+    return;
+  }
+
   const target = event.target.closest('[data-sort-scope="archive"]');
   if (!target) {
     return;
@@ -1133,6 +1146,16 @@ elements.summaryGrid.addEventListener('click', (event) => {
   renderSummary();
 });
 elements.timelineList.addEventListener('click', (event) => {
+  const archiveTarget = event.target.closest('[data-archive-type]');
+  if (archiveTarget) {
+    state.archiveFilter = archiveTarget.dataset.archiveType;
+    state.activeSection = 'alliances';
+    renderAlliances();
+    updateVisibility();
+    setStatus(`已筛选 ${state.archiveFilter} 成员。`, 'success');
+    return;
+  }
+
   const target = event.target.closest('[data-delete-snapshot]');
   if (!target) {
     return;
