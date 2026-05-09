@@ -27,6 +27,24 @@ fi
 
 DEPLOY_BRANCH=$(grep '^DEPLOY_BRANCH=' "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d '=' -f 2-)
 DEPLOY_BRANCH=${DEPLOY_BRANCH:-$DEFAULT_BRANCH}
+DEPLOY_SKIP_GIT_SYNC=${DEPLOY_SKIP_GIT_SYNC:-$(grep '^DEPLOY_SKIP_GIT_SYNC=' "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d '=' -f 2-)}
+DEPLOY_SKIP_GIT_SYNC=${DEPLOY_SKIP_GIT_SYNC:-0}
+cmd="${1:-up}"
+case "$cmd" in
+  up-local)
+    DEPLOY_SKIP_GIT_SYNC="1"
+    cmd="up"
+    ;;
+  rebuild-local)
+    DEPLOY_SKIP_GIT_SYNC="1"
+    cmd="rebuild"
+    ;;
+  restart-local)
+    DEPLOY_SKIP_GIT_SYNC="1"
+    cmd="restart"
+    ;;
+esac
+
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "[error] 未找到 docker，请先安装。"
@@ -63,19 +81,21 @@ run_compose() {
   fi
 }
 
-echo "pull latest code..."
 cd "$ROOT_DIR"
-git fetch origin
-git reset --hard "origin/$DEPLOY_BRANCH"
-git clean -fd
+if [ "$DEPLOY_SKIP_GIT_SYNC" = "1" ] || [ "$DEPLOY_SKIP_GIT_SYNC" = "true" ]; then
+  echo "skip git sync, use current working tree."
+else
+  echo "pull latest code..."
+  git fetch origin
+  git reset --hard "origin/$DEPLOY_BRANCH"
+  git clean -fd
+  echo "code synced: origin/$DEPLOY_BRANCH"
+fi
 mkdir -p "$DATA_DIR"
 if [ ! -f "$PERSIST_STORE_FILE" ] && [ -f "$STORE_BACKUP_FILE" ]; then
   cp "$STORE_BACKUP_FILE" "$PERSIST_STORE_FILE"
   echo "[data] 已迁移运行数据到 docker/data/store.json，后续重新编译不会被 git reset 覆盖。"
 fi
-echo "code synced: origin/$DEPLOY_BRANCH"
-
-cmd="${1:-up}"
 
 compose_cmd() {
   if run_docker compose version >/dev/null 2>&1; then
@@ -149,7 +169,7 @@ case "$cmd" in
     fi
     ;;
   *)
-    echo "Usage: sh docker/deploy.sh {up|rebuild|rebuild-fresh|down|restart|logs|ps|clean|clean-all}"
+    echo "Usage: sh docker/deploy.sh {up|up-local|rebuild|rebuild-local|rebuild-fresh|down|restart|restart-local|logs|ps|clean|clean-all}"
     exit 1
     ;;
 esac

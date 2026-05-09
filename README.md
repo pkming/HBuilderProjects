@@ -58,6 +58,20 @@
 
 也就是说服务器代码会始终被重置到远端 main 分支最新版本。
 
+如果你已经手动执行过 git pull，或者服务器上 git fetch 卡住，可以跳过脚本里的 Git 同步，只用当前代码重建：
+
+```sh
+DEPLOY_SKIP_GIT_SYNC=1 sh docker/deploy.sh rebuild
+```
+
+等价简写：
+
+```sh
+sh docker/deploy.sh rebuild-local
+```
+
+也可以把 docker/.env 里的 DEPLOY_SKIP_GIT_SYNC 改成 1，之后脚本就不会自动 git fetch/reset。
+
 生产数据目录：
 
 - Docker 会把 docker/data 挂载到容器内的 /app/backend/data
@@ -73,7 +87,7 @@ git fetch origin
 git reset --hard origin/main
 mkdir -p docker/data
 cp /tmp/alliance-admin-store.json docker/data/store.json
-sh docker/deploy.sh rebuild
+sh docker/deploy.sh rebuild-local
 ```
 
 这一步只需要做一次。之后再执行 sh docker/deploy.sh rebuild，数据会继续保留在 docker/data/store.json。
