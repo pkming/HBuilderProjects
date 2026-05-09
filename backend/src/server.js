@@ -284,16 +284,22 @@ function getScoreThreshold(values, ratio, fallback = 0, order = 'desc') {
 function computeFlags(row, delta, thresholds) {
   const powerDelta = delta.power || 0;
   const engagementScore = row.contributionWeek + row.meritWeek + row.assistWeek + row.donationWeek;
-  const isActive = engagementScore >= thresholds.activeScore || powerDelta >= thresholds.activePowerGrowth;
+  const isLowMerit = row.meritWeek <= thresholds.lowMerit;
+  const isLowContribution = row.contributionWeek <= thresholds.lowContribution;
+  const hasPowerGrowth = powerDelta >= thresholds.powerGrowthWatch;
+  const hasHighPower = row.power >= thresholds.averagePower;
+  const isActive = engagementScore >= thresholds.activeScore || (hasPowerGrowth && (!isLowMerit || !isLowContribution));
   const isDonor = row.donationWeek >= thresholds.donorDonation && row.donationWeek > row.contributionWeek + row.meritWeek + row.assistWeek;
   const isIdle = engagementScore <= thresholds.idleScore && powerDelta <= thresholds.idlePowerGrowth;
-  const isLandFarmer = row.power >= thresholds.averagePower && engagementScore <= thresholds.landFarmerScore && row.contributionWeek <= 500 && row.meritWeek <= 500;
+  const isLandFarmer = (hasPowerGrowth || hasHighPower) && isLowMerit;
+  const isNoCity = isLandFarmer && isLowContribution;
 
   return {
     active: isActive,
     donor: isDonor,
     idle: isIdle,
-    landFarmer: isLandFarmer
+    landFarmer: isLandFarmer,
+    noCity: isNoCity
   };
 }
 
@@ -585,6 +591,8 @@ function buildManagementBoard(members, memberChanges, registry) {
     contributionWeek: member.contributionWeek,
     meritWeek: member.meritWeek,
     assistWeek: member.assistWeek,
+    powerDelta: member.delta?.power ?? null,
+    flags: member.flags,
     projectCount: member.career?.projectCount || 1,
     lastSeenAt: member.career?.lastSeenAt || null
   });
@@ -603,7 +611,7 @@ function buildManagementBoard(members, memberChanges, registry) {
       .slice(0, 12)
       .map(compactMember),
     lowActivity: members
-      .filter((member) => member.flags?.idle || member.archive?.archiveType === '老家低活跃观察')
+      .filter((member) => member.flags?.idle || member.flags?.noCity || member.archive?.archiveType === '老家低活跃观察')
       .slice()
       .sort(byRisk)
       .slice(0, 12)
@@ -636,8 +644,11 @@ function buildMemberHistory(zoneSnapshots, latestMembers) {
     .map((memberName) => {
       const latestMember = latestMemberMap.get(memberName);
       const snapshotValues = Object.fromEntries(
-        zoneSnapshots.map((snapshot) => {
+        zoneSnapshots.map((snapshot, index) => {
           const row = snapshot.rows.find((item) => item.memberName === memberName);
+          const previousSnapshot = index > 0 ? zoneSnapshots[index - 1] : null;
+          const previousRow = previousSnapshot?.rows.find((item) => item.memberName === memberName);
+          const delta = row ? compareWithPrevious(row, previousRow) : null;
           return [
             snapshot.id,
             row
@@ -647,6 +658,7 @@ function buildMemberHistory(zoneSnapshots, latestMembers) {
                   assistWeek: row.assistWeek,
                   donationWeek: row.donationWeek,
                   power: row.power,
+                  powerDelta: delta.power,
                   contributionRank: row.contributionRank
                 }
               : null
@@ -664,7 +676,8 @@ function buildMemberHistory(zoneSnapshots, latestMembers) {
           active: false,
           donor: false,
           idle: false,
-          landFarmer: false
+          landFarmer: false,
+          noCity: false
         },
         snapshotValues
       };
@@ -700,14 +713,25 @@ function buildZoneDashboard(zoneId, snapshots) {
     (row) => row.contributionWeek + row.meritWeek + row.assistWeek + row.donationWeek
   );
   const donationScores = latestSnapshot.rows.map((row) => row.donationWeek);
+  const contributionScores = latestSnapshot.rows.map((row) => row.contributionWeek);
+  const meritScores = latestSnapshot.rows.map((row) => row.meritWeek);
+  const powerDeltas = latestSnapshot.rows
+    .map((row) => {
+      const previousRow = previousMap.get(row.memberName);
+      return previousRow ? Math.max(0, row.power - previousRow.power) : 0;
+    })
+    .filter((value) => value > 0);
   const averagePower = latestSnapshot.rows.reduce((sum, row) => sum + row.power, 0) / latestSnapshot.rows.length;
   const thresholds = {
     activeScore: getScoreThreshold(engagementScores, 0.35, 12000, 'desc'),
     activePowerGrowth: 1000,
+    powerGrowthWatch: Math.max(1000, getScoreThreshold(powerDeltas, 0.35, 1000, 'desc')),
     donorDonation: Math.max(2000, getScoreThreshold(donationScores, 0.2, 2000, 'desc')),
     idleScore: Math.min(1200, getScoreThreshold(engagementScores, 0.15, 1200, 'asc')),
     idlePowerGrowth: 300,
     landFarmerScore: Math.min(1500, getScoreThreshold(engagementScores, 0.2, 1500, 'asc')),
+    lowContribution: Math.max(500000, getScoreThreshold(contributionScores, 0.25, 500000, 'asc')),
+    lowMerit: Math.max(800, getScoreThreshold(meritScores, 0.3, 800, 'asc')),
     averagePower
   };
 
@@ -747,6 +771,7 @@ function buildZoneDashboard(zoneId, snapshots) {
       assistWeek: member.assistWeek,
       donationWeek: member.donationWeek,
       power: member.power,
+      powerDelta: member.delta.power,
       activityScore: member.archive.activityScore,
       meritScore: member.archive.meritScore,
       relocationScore: member.archive.relocationScore,

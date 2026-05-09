@@ -270,8 +270,19 @@ function getHistoryMetricLabel(metric) {
     meritWeek: '战功本周',
     assistWeek: '助攻本周',
     donationWeek: '捐献本周',
-    power: '势力值'
+    power: '势力值',
+    powerDelta: '势力变化'
   }[metric] || '最新快照明细';
+}
+
+function getMemberTagText(member) {
+  return [
+    member.flags?.active ? '活跃' : '',
+    member.flags?.landFarmer ? '地奴' : '',
+    member.flags?.noCity ? '不打城' : '',
+    member.flags?.idle ? '挂机' : '',
+    member.flags?.donor ? '捐献号' : ''
+  ].filter(Boolean).join(' / ') || '--';
 }
 
 function getCurrentProject() {
@@ -324,12 +335,16 @@ function getSortedLatestMembers() {
       ? left.archive?.archiveType
       : state.membersSort.key === 'compositeScore'
         ? left.archive?.compositeScore
-        : left[state.membersSort.key];
+        : state.membersSort.key === 'powerDelta'
+          ? left.delta?.power
+          : left[state.membersSort.key];
     const rightValue = state.membersSort.key === 'archiveType'
       ? right.archive?.archiveType
       : state.membersSort.key === 'compositeScore'
         ? right.archive?.compositeScore
-        : right[state.membersSort.key];
+        : state.membersSort.key === 'powerDelta'
+          ? right.delta?.power
+          : right[state.membersSort.key];
 
     return compareValues(leftValue, rightValue, state.membersSort.direction);
   });
@@ -361,10 +376,11 @@ function getHistoryRows() {
 }
 
 function renderMemberLink(member) {
+  const tagText = getMemberTagText(member);
   return `
     <div class="mini-member">
       <strong>${escapeHtml(member.memberName)}</strong>
-      <span>${escapeHtml(member.archiveType || member.latestArchiveType || '--')}</span>
+      <span>${escapeHtml(tagText !== '--' ? tagText : (member.archiveType || member.latestArchiveType || '--'))}</span>
     </div>
   `;
 }
@@ -385,6 +401,7 @@ function renderBoardList(title, members, emptyText) {
                   <div class="board-values">
                     <span>${escapeHtml(member.state || member.latestState || '--')}</span>
                     <span>${escapeHtml(member.alliance || member.latestAlliance || '--')}</span>
+                    ${member.powerDelta === null || member.powerDelta === undefined ? '' : `<span class="${escapeHtml(deltaClass(member.powerDelta))}">势力 ${escapeHtml(formatDelta(member.powerDelta))}</span>`}
                     <span>跟 ${escapeHtml(member.projectCount || 1)} 项</span>
                   </div>
                 </div>
@@ -400,7 +417,7 @@ function getBoardSections(board = {}) {
   return [
     { key: 'hometownMain', title: '待迁', fullTitle: '老家待迁主力', emptyText: '暂无待迁主力', members: board.hometownMain || [] },
     { key: 'frontlineLow', title: '前线低活', fullTitle: '前线低活跃', emptyText: '暂无前线低活跃', members: board.frontlineLow || [] },
-    { key: 'lowActivity', title: '观察', fullTitle: '低活跃观察', emptyText: '暂无低活跃观察', members: board.lowActivity || [] },
+    { key: 'lowActivity', title: '异常', fullTitle: '地奴/不打城观察', emptyText: '暂无异常观察成员', members: board.lowActivity || [] },
     { key: 'activeFighters', title: '战功', fullTitle: '战功活跃', emptyText: '暂无战功记录', members: board.activeFighters || [] },
     { key: 'longTermMembers', title: '老成员', fullTitle: '跨项目老成员', emptyText: '暂无跨项目成员', members: board.longTermMembers || [] }
   ];
@@ -594,6 +611,7 @@ function renderAlliances() {
             <th>${renderSortButton('archive', 'assistWeek', '助攻本周', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'donationWeek', '捐献本周', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'power', '势力值', state.archiveSort)}</th>
+            <th>${renderSortButton('archive', 'powerDelta', '势力变化', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'compositeScore', '综合分', state.archiveSort)}</th>
             <th>跟随</th>
           </tr>
@@ -613,6 +631,7 @@ function renderAlliances() {
                   <td>${escapeHtml(formatNumber(item.assistWeek))}</td>
                   <td>${escapeHtml(formatNumber(item.donationWeek))}</td>
                   <td>${escapeHtml(formatNumber(item.power))}</td>
+                  <td class="${escapeHtml(deltaClass(item.powerDelta))}">${escapeHtml(formatDelta(item.powerDelta))}</td>
                   <td>${escapeHtml(item.compositeScore)}</td>
                   <td>${escapeHtml(`${item.projectCount || 1} 项`)}</td>
                 </tr>
@@ -745,6 +764,7 @@ function renderMembers() {
             <th>${renderSortButton('members', 'assistWeek', '助攻本周', state.membersSort)}</th>
             <th>${renderSortButton('members', 'donationWeek', '捐献本周', state.membersSort)}</th>
             <th>${renderSortButton('members', 'power', '势力值', state.membersSort)}</th>
+            <th>${renderSortButton('members', 'powerDelta', '势力变化', state.membersSort)}</th>
             <th>${renderSortButton('members', 'compositeScore', '综合分', state.membersSort)}</th>
             <th>跟随</th>
             <th>标签</th>
@@ -753,12 +773,7 @@ function renderMembers() {
         <tbody>
           ${members
             .map((member) => {
-              const tags = [
-                member.flags.active ? '活跃' : '',
-                member.flags.landFarmer ? '地奴' : '',
-                member.flags.idle ? '挂机' : '',
-                member.flags.donor ? '捐献号' : ''
-              ].filter(Boolean).join(' / ') || '--';
+              const tags = getMemberTagText(member);
 
               return `
                 <tr>
@@ -772,6 +787,7 @@ function renderMembers() {
                   <td>${escapeHtml(formatNumber(member.assistWeek))}</td>
                   <td>${escapeHtml(formatNumber(member.donationWeek))}</td>
                   <td>${escapeHtml(formatNumber(member.power))}</td>
+                  <td class="${escapeHtml(deltaClass(member.delta?.power))}">${escapeHtml(formatDelta(member.delta?.power))}</td>
                   <td>${escapeHtml(member.archive?.compositeScore ?? '--')}</td>
                   <td>${escapeHtml(`${member.career?.projectCount || 1} 项`)}</td>
                   <td>${escapeHtml(tags)}</td>
