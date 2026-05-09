@@ -696,6 +696,7 @@ function buildManagementBoard(members, memberChanges, registry) {
     assistWeek: member.assistWeek,
     powerDelta: member.delta?.power ?? null,
     flags: member.flags,
+    stateMoveCount: member.stateMoveCount || 0,
     projectCount: member.career?.projectCount || 1,
     lastSeenAt: member.career?.lastSeenAt || null
   });
@@ -732,6 +733,27 @@ function buildManagementBoard(members, memberChanges, registry) {
   };
 }
 
+function buildStateMoveCounts(zoneSnapshots) {
+  const stateMap = new Map();
+
+  zoneSnapshots.forEach((snapshot) => {
+    snapshot.rows.forEach((row) => {
+      const current = stateMap.get(row.memberName) || {
+        lastState: null,
+        count: 0
+      };
+
+      if (current.lastState && current.lastState !== row.state) {
+        current.count += 1;
+      }
+      current.lastState = row.state;
+      stateMap.set(row.memberName, current);
+    });
+  });
+
+  return new Map(Array.from(stateMap.entries()).map(([memberName, value]) => [memberName, value.count]));
+}
+
 function buildMemberHistory(zoneSnapshots, latestMembers) {
   const snapshotColumns = zoneSnapshots.map((snapshot) => ({
     id: snapshot.id,
@@ -741,6 +763,7 @@ function buildMemberHistory(zoneSnapshots, latestMembers) {
   }));
 
   const latestMemberMap = new Map(latestMembers.map((member) => [member.memberName, member]));
+  const stateMoveCounts = buildStateMoveCounts(zoneSnapshots);
   const memberNames = [...new Set(zoneSnapshots.flatMap((snapshot) => snapshot.rows.map((row) => row.memberName)))];
 
   const members = memberNames
@@ -775,6 +798,7 @@ function buildMemberHistory(zoneSnapshots, latestMembers) {
         state: latestMember?.state || '--',
         archiveType: latestMember?.archive?.archiveType || '--',
         compositeScore: latestMember?.archive?.compositeScore ?? null,
+        stateMoveCount: stateMoveCounts.get(memberName) || 0,
         flags: latestMember?.flags || {
           active: false,
           donor: false,
@@ -810,6 +834,7 @@ function buildZoneDashboard(zoneId, snapshots) {
 
   const latestSnapshot = zoneSnapshots[zoneSnapshots.length - 1];
   const previousSnapshot = zoneSnapshots[zoneSnapshots.length - 2] || null;
+  const stateMoveCounts = buildStateMoveCounts(zoneSnapshots);
   const previousMap = new Map((previousSnapshot?.rows || []).map((row) => [row.memberName, row]));
   const latestMap = new Map(latestSnapshot.rows.map((row) => [row.memberName, row]));
   const engagementScores = latestSnapshot.rows.map(
@@ -851,6 +876,7 @@ function buildZoneDashboard(zoneId, snapshots) {
         delta,
         flags,
         archive,
+        stateMoveCount: stateMoveCounts.get(row.memberName) || 0,
         career: registryMap.get(row.memberName) || null,
         movement
       };
@@ -875,6 +901,8 @@ function buildZoneDashboard(zoneId, snapshots) {
       donationWeek: member.donationWeek,
       power: member.power,
       powerDelta: member.delta.power,
+      flags: member.flags,
+      stateMoveCount: member.stateMoveCount,
       activityScore: member.archive.activityScore,
       meritScore: member.archive.meritScore,
       relocationScore: member.archive.relocationScore,

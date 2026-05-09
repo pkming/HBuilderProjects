@@ -287,19 +287,6 @@ function getMemberTagText(member) {
   ].filter(Boolean).join(' / ') || '--';
 }
 
-function getArchiveShortTag(archiveType) {
-  return {
-    前线主战核心: '主',
-    前线高活跃支援: '援',
-    前线普通活跃: '活',
-    前线低活跃观察: '低',
-    老家待迁主力: '迁',
-    老家活跃后备: '备',
-    老家普通成员: '普',
-    老家低活跃观察: '闲'
-  }[archiveType] || '其';
-}
-
 function getAllianceShortTag(alliance) {
   const value = typeof alliance === 'string' ? alliance.trim() : '';
   if (!value || value === '未分盟' || value === '无门阀') {
@@ -319,8 +306,52 @@ function getAllianceShortTag(alliance) {
   return Array.from(value.replace(/[丨|｜\s]/g, ''))[0] || '其';
 }
 
+function getStateShortTag(state) {
+  if (state === '黄淮') {
+    return '淮';
+  }
+  if (state === '荆州') {
+    return '荆';
+  }
+  return Array.from(String(state || '未'))[0] || '未';
+}
+
+function getActivityShortTag(member) {
+  if (member.flags?.noCity) {
+    return { label: '城', title: '不打城：势力高或增长明显，但战功和贡献都低' };
+  }
+  if (member.flags?.landFarmer) {
+    return { label: '农', title: '地奴：势力高或增长明显，但战功偏低' };
+  }
+  if ((member.meritWeek || 0) >= 10000) {
+    return { label: '战', title: '高战功成员' };
+  }
+  if ((member.meritWeek || 0) > 0) {
+    return { label: '功', title: '有战功成员' };
+  }
+  if (member.flags?.active || (member.contributionWeek || 0) > 0 || (member.assistWeek || 0) > 0) {
+    return { label: '活', title: '有贡献或助攻活跃' };
+  }
+  if (member.flags?.idle) {
+    return { label: '闲', title: '低活跃观察' };
+  }
+  return { label: '低', title: '产出偏低' };
+}
+
 function renderMiniTag(label, title, variant = '') {
   return `<span class="mini-tag ${escapeHtml(variant)}" title="${escapeHtml(title || label)}">${escapeHtml(label)}</span>`;
+}
+
+function renderCompactTags(member) {
+  const activity = getActivityShortTag(member);
+  const stateLabel = `${getStateShortTag(member.state)}-${member.stateMoveCount || 0}`;
+  return `
+    <div class="tag-stack">
+      ${renderMiniTag(getAllianceShortTag(member.alliance), member.alliance || '未知门阀', 'alliance-tag')}
+      ${renderMiniTag(activity.label, activity.title, 'activity-tag')}
+      ${renderMiniTag(stateLabel, `${member.state || '未知州'}，迁城/换州 ${member.stateMoveCount || 0} 次`, 'state-tag')}
+    </div>
+  `;
 }
 
 function getCurrentProject() {
@@ -651,9 +682,7 @@ function renderAlliances() {
         <thead>
           <tr>
             <th>${renderSortButton('archive', 'memberName', '成员', state.archiveSort)}</th>
-            <th>${renderSortButton('archive', 'archiveType', '档', state.archiveSort)}</th>
-            <th>${renderSortButton('archive', 'state', '所属州', state.archiveSort)}</th>
-            <th>${renderSortButton('archive', 'alliance', '门', state.archiveSort)}</th>
+            <th>标签</th>
             <th>${renderSortButton('archive', 'contributionRank', '贡献排行', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'contributionWeek', '贡献本周', state.archiveSort)}</th>
             <th>${renderSortButton('archive', 'meritWeek', '战功本周', state.archiveSort)}</th>
@@ -671,9 +700,7 @@ function renderAlliances() {
               (item) => `
                 <tr>
                   <td>${escapeHtml(item.memberName)}</td>
-                  <td>${renderMiniTag(getArchiveShortTag(item.archiveType), item.archiveType, 'archive-tag')}</td>
-                  <td>${escapeHtml(item.state)}</td>
-                  <td>${renderMiniTag(getAllianceShortTag(item.alliance), item.alliance, 'alliance-tag')}</td>
+                  <td>${renderCompactTags(item)}</td>
                   <td>${escapeHtml(item.contributionRank)}</td>
                   <td>${escapeHtml(formatNumber(item.contributionWeek))}</td>
                   <td>${escapeHtml(formatNumber(item.meritWeek))}</td>
@@ -772,7 +799,7 @@ function renderMembers() {
                 <tr>
                   <td>
                     <strong>${escapeHtml(member.memberName)}</strong>
-                    <div class="sub-cell">${escapeHtml(member.archiveType)}</div>
+                    <div class="sub-cell">${renderCompactTags(member)}</div>
                   </td>
                   ${history.snapshots
                     .map((snapshot) => {
@@ -804,9 +831,7 @@ function renderMembers() {
         <thead>
           <tr>
             <th>${renderSortButton('members', 'memberName', '成员', state.membersSort)}</th>
-            <th>${renderSortButton('members', 'archiveType', '档', state.membersSort)}</th>
-            <th>${renderSortButton('members', 'alliance', '门', state.membersSort)}</th>
-            <th>${renderSortButton('members', 'state', '州', state.membersSort)}</th>
+            <th>标签</th>
             <th>${renderSortButton('members', 'contributionRank', '贡献排行', state.membersSort)}</th>
             <th>${renderSortButton('members', 'contributionWeek', '贡献本周', state.membersSort)}</th>
             <th>${renderSortButton('members', 'meritWeek', '战功本周', state.membersSort)}</th>
@@ -816,20 +841,14 @@ function renderMembers() {
             <th>${renderSortButton('members', 'donationWeek', '捐献本周', state.membersSort)}</th>
             <th>${renderSortButton('members', 'compositeScore', '综合分', state.membersSort)}</th>
             <th>跟随</th>
-            <th>标签</th>
           </tr>
         </thead>
         <tbody>
           ${members
-            .map((member) => {
-              const tags = getMemberTagText(member);
-
-              return `
+            .map((member) => `
                 <tr>
                   <td>${escapeHtml(member.memberName)}</td>
-                  <td>${renderMiniTag(getArchiveShortTag(member.archive?.archiveType), member.archive?.archiveType || '--', 'archive-tag')}</td>
-                  <td>${renderMiniTag(getAllianceShortTag(member.alliance), member.alliance, 'alliance-tag')}</td>
-                  <td>${escapeHtml(member.state)}</td>
+                  <td>${renderCompactTags(member)}</td>
                   <td>${escapeHtml(member.contributionRank)}</td>
                   <td>${escapeHtml(formatNumber(member.contributionWeek))}</td>
                   <td>${escapeHtml(formatNumber(member.meritWeek))}</td>
@@ -839,10 +858,8 @@ function renderMembers() {
                   <td>${escapeHtml(formatNumber(member.donationWeek))}</td>
                   <td>${escapeHtml(member.archive?.compositeScore ?? '--')}</td>
                   <td>${escapeHtml(`${member.career?.projectCount || 1} 项`)}</td>
-                  <td>${escapeHtml(tags)}</td>
                 </tr>
-              `;
-            })
+              `)
             .join('')}
         </tbody>
       </table>
