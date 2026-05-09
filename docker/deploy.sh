@@ -5,6 +5,10 @@ set -eu
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DOCKER_DIR="$ROOT_DIR/docker"
 ENV_FILE="$DOCKER_DIR/.env"
+DATA_DIR="$DOCKER_DIR/data"
+PERSIST_STORE_FILE="$DATA_DIR/store.json"
+LEGACY_STORE_FILE="$ROOT_DIR/backend/data/store.json"
+STORE_BACKUP_FILE="/tmp/alliance-admin-store-backup.json"
 DEFAULT_BRANCH="main"
 USE_SUDO="0"
 COMPOSE_MODE=""
@@ -13,6 +17,12 @@ if [ ! -f "$ENV_FILE" ]; then
   cp "$DOCKER_DIR/.env.example" "$ENV_FILE"
   echo "[init] 已生成 docker/.env，请检查配置后重试。"
   exit 0
+fi
+
+mkdir -p "$DATA_DIR"
+if [ ! -f "$PERSIST_STORE_FILE" ] && [ -f "$LEGACY_STORE_FILE" ]; then
+  cp "$LEGACY_STORE_FILE" "$STORE_BACKUP_FILE"
+  echo "[data] 已备份旧数据文件，稍后迁移到 docker/data/store.json。"
 fi
 
 DEPLOY_BRANCH=$(grep '^DEPLOY_BRANCH=' "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d '=' -f 2-)
@@ -58,6 +68,11 @@ cd "$ROOT_DIR"
 git fetch origin
 git reset --hard "origin/$DEPLOY_BRANCH"
 git clean -fd
+mkdir -p "$DATA_DIR"
+if [ ! -f "$PERSIST_STORE_FILE" ] && [ -f "$STORE_BACKUP_FILE" ]; then
+  cp "$STORE_BACKUP_FILE" "$PERSIST_STORE_FILE"
+  echo "[data] 已迁移运行数据到 docker/data/store.json，后续重新编译不会被 git reset 覆盖。"
+fi
 echo "code synced: origin/$DEPLOY_BRANCH"
 
 cmd="${1:-up}"

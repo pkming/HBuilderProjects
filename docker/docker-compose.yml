@@ -13,7 +13,7 @@ services:
       - '${APP_PORT:-80}:3100'
       - '${APP_ALT_PORT:-3100}:3100'
     volumes:
-      - ../backend/data:/app/backend/data
+      - ./data:/app/backend/data
     healthcheck:
       test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:3100/api/health']
       interval: 20s

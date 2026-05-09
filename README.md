@@ -4,7 +4,8 @@
 
 - 后端：Express，入口在 backend/src/server.js
 - 前端：静态页面，目录在 frontend
-- 数据：快照存储在 backend/data/store.json
+- 本地数据：快照存储在 backend/data/store.json
+- Docker 生产数据：快照存储在 docker/data/store.json，不会被 git reset 覆盖
 
 ## 本地开发
 
@@ -56,6 +57,26 @@
 4. docker compose up -d --build
 
 也就是说服务器代码会始终被重置到远端 main 分支最新版本。
+
+生产数据目录：
+
+- Docker 会把 docker/data 挂载到容器内的 /app/backend/data
+- docker/data/store.json 是正式运行数据文件
+- docker/data 目录已被 Git 忽略，重新编译、重启、git reset 都不会覆盖它
+- 不要手动删除 docker/data/store.json
+
+如果你之前已经部署过旧版本，并且数据在 backend/data/store.json，第一次升级到当前版本前先在服务器执行：
+
+```sh
+cp backend/data/store.json /tmp/alliance-admin-store.json
+git fetch origin
+git reset --hard origin/main
+mkdir -p docker/data
+cp /tmp/alliance-admin-store.json docker/data/store.json
+sh docker/deploy.sh rebuild
+```
+
+这一步只需要做一次。之后再执行 sh docker/deploy.sh rebuild，数据会继续保留在 docker/data/store.json。
 
 ## 腾讯云部署建议
 
